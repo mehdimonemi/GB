@@ -1,6 +1,7 @@
 module ir.rai {
     requires javafx.controls;
     requires javafx.fxml;
+    requires javafx.graphics;
     requires poi;
     requires poi.ooxml;
     requires org.jfxtras.styles.jmetro;
