@@ -4,11 +4,12 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
+<?import javafx.scene.control.skin.TableHeaderRow?>
 <VBox stylesheets="@primary.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ir.rai.PrimaryController">
     <ToolBar>
         <Button fx:id="menu" onAction="#switchToSecondary" text="show" />
     </ToolBar>
-    <HBox fx:id="hBox" minHeight="900">
+    <HBox fx:id="hBox">
         <ToolBar minHeight="-Infinity" orientation="VERTICAL">
             <Button text="copy" />
         </ToolBar>
@@ -19,8 +20,12 @@
             </HBox.margin>
         </Pane>
 
-        <TreeTableView>
-
-        </TreeTableView>
+        <VBox fx:id="leftContext">
+            <TableView fx:id="table" editable="true"/>
+            <ToolBar>
+                <Button fx:id="addButton" text="add"/>
+                <ComboBox fx:id="coordinationBox"/>
+            </ToolBar>
+        </VBox>
     </HBox>
 </VBox>
