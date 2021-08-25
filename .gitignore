@@ -12,6 +12,7 @@
 .mtj.tmp/
 .idea
 target
+cplex
 
 # Package Files #
 *.jar
@@ -22,6 +23,8 @@ target
 *.tar.gz
 *.rar
 ~$gabari.xlsx
+Data.xlsx
+~$Data.xlsx
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*

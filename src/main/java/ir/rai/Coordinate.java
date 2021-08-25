@@ -4,6 +4,11 @@ public class Coordinate {
     float x;
     float y;
 
+    public Coordinate(Float x, Float y) {
+        this.x = x;
+        this.y = y;
+    }
+
     public float getX() {
         return x;
     }

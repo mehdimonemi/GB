@@ -5,27 +5,40 @@
 <?import javafx.scene.layout.*?>
 
 <?import javafx.scene.control.skin.TableHeaderRow?>
-<VBox stylesheets="@primary.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ir.rai.PrimaryController">
+<VBox stylesheets="@primary.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="ir.rai.PrimaryController">
     <ToolBar>
-        <Button fx:id="menu" onAction="#switchToSecondary" text="show" />
+        <Button fx:id="menu" onAction="#calculate" text="show"/>
     </ToolBar>
     <HBox fx:id="hBox">
         <ToolBar minHeight="-Infinity" orientation="VERTICAL">
-            <Button text="copy" />
+            <Button text="copy"/>
         </ToolBar>
 
         <Pane fx:id="pane" minWidth="500.0">
             <HBox.margin>
-                <Insets topRightBottomLeft="10" />
+                <Insets topRightBottomLeft="10"/>
             </HBox.margin>
         </Pane>
 
-        <VBox fx:id="leftContext">
+        <VBox fx:id="leftContext" spacing="5">
+            <GridPane>
+                <Label text="Origin" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                <TextField fx:id="origin" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                <Label text="Destination" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                <TextField fx:id="destination" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+            </GridPane>
             <TableView fx:id="table" editable="true"/>
             <ToolBar>
-                <Button fx:id="addButton" text="add"/>
                 <ComboBox fx:id="coordinationBox"/>
             </ToolBar>
+            <Button fx:id="addButton" text="add"/>
+            <GridPane>
+                <Label text="First Parameter" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                <TextField fx:id="add1Para" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                <Label text="Second Parameter" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                <TextField fx:id="add2Para" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+            </GridPane>
         </VBox>
     </HBox>
 </VBox>
