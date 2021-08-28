@@ -237,6 +237,14 @@ public class Block {
         this.capacity = capacity;
     }
 
+    public int getGabariCode() {
+        return gabariCode;
+    }
+
+    public void setGabariCode(int gabariCode) {
+        this.gabariCode = gabariCode;
+    }
+
     @Override
     public String toString() {
         return "Block{" +

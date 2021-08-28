@@ -11,11 +11,9 @@
         <Button fx:id="menu" onAction="#calculate" text="show"/>
     </ToolBar>
     <HBox fx:id="hBox">
-        <ToolBar minHeight="-Infinity" orientation="VERTICAL">
-            <Button text="copy"/>
-        </ToolBar>
-
         <Pane fx:id="pane" minWidth="500.0">
+            <TabPane fx:id="tabPane" minHeight="-Infinity" side="LEFT" rotateGraphic="true">
+            </TabPane>
             <HBox.margin>
                 <Insets topRightBottomLeft="10"/>
             </HBox.margin>

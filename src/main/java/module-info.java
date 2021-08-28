@@ -5,7 +5,6 @@ module ir.rai {
     requires poi;
     requires poi.ooxml;
     requires org.jfxtras.styles.jmetro;
-    requires esri.geometry.api;
     requires org.locationtech.jts;
     requires cplex;
 

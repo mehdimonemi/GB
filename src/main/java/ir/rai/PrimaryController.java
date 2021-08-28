@@ -1,8 +1,8 @@
 package ir.rai;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 import ir.rai.Data.Assignment;
 import javafx.collections.FXCollections;
@@ -10,29 +10,30 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
+import javafx.scene.Group;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.TableColumn.CellEditEvent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
 import javafx.util.Callback;
-import org.apache.poi.xssf.usermodel.XSSFRow;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 
+import static ir.rai.Data.Assignment.gTips;
 import static jfxtras.styles.jmetro.JMetroStyleClass.*;
 
 public class PrimaryController {
     @FXML
-    Pane pane;
+    TabPane tabPane;
 
     @FXML
     Button addButton;
@@ -45,7 +46,7 @@ public class PrimaryController {
 
     @FXML
     TableView<Coordinate> table;
-
+    Assignment assignment;
     private final ObservableList<Coordinate> data =
             FXCollections.observableArrayList(
                     new Coordinate(100f, 300f),
@@ -55,12 +56,9 @@ public class PrimaryController {
                     new Coordinate(100f, 300f)
             );
 
-    ArrayList<GTip> gTips = new ArrayList<>();
-
-
     @FXML
     private void initialize() {
-        Assignment assignment = new Assignment(origin.getText(), destination.getText());
+        assignment = new Assignment();
         configureTable();
     }
 
@@ -114,13 +112,30 @@ public class PrimaryController {
 
     @FXML
     private void calculate() throws ParseException {
+        HashMap<String, Integer> gabariResult =
+                new HashMap<>(assignment.main(origin.getText(), destination.getText()));
 
-        analyzeCommodity();
-        drawGabari(gTips.get(0));
+        for (Map.Entry pair : gabariResult.entrySet()) {
+            Tab tab = new Tab();
+            tab.setClosable(false);
+
+            Label label = new Label(pair.getKey().toString());
+            label.setRotate(90);
+
+            tab.setGraphic(new Group(label));
+
+            StringBuffer result = analyzeGabari(gTips.get((Integer) pair.getValue() - 1));
+            drawGabari(result, gTips.get((Integer) pair.getValue() - 1), tab);
+            tabPane.getTabs().add(tab);
+        }
 
     }
 
-    private void drawGabari(GTip gTip) {
+    private void drawGabari(StringBuffer result, GTip gTip, Tab tab) {
+        VBox box = new VBox();
+        box.setAlignment(Pos.CENTER);
+        Pane pane = new Pane();
+        box.getChildren().add(new Label(result.toString()));
         Path path = new Path();
         path.getElements().add(new MoveTo(gTip.getAllowedSpace()[0][0],
                 Math.abs(gTip.getMaxH() - gTip.getAllowedSpace()[0][1])));
@@ -148,99 +163,20 @@ public class PrimaryController {
                     Math.abs(gTip.getMaxH() - data.get(i).getY())));
         }
         pane.getChildren().add(path);
+        box.getChildren().add(pane);
+        tab.setContent(box);
     }
 
-    private void analyzeCommodity() {
-
-    }
-
-    public void readGabari() {
-        FileInputStream inFile;
-        XSSFWorkbook workbook;
-        GTip gTip = new GTip();
-        try {
-            inFile = new FileInputStream("./gabari.xlsx");
-            workbook = new XSSFWorkbook(inFile);
-
-            for (int sheetIndex = 0; sheetIndex < workbook.getNumberOfSheets(); sheetIndex++) {
-                XSSFSheet sheet = workbook.getSheetAt(sheetIndex);
-                gTip.setMaxH((int) sheet.getRow(1).getCell(0).getNumericCellValue() / 10);
-                gTip.setMaxW((int) sheet.getRow(1).getCell(1).getNumericCellValue() / 10);
-
-                XSSFRow row;
-                int freeSpaceCorners = 0;
-                do {
-                    freeSpaceCorners++;
-                    row = sheet.getRow(freeSpaceCorners + 4);
-                } while (row != null && row.getCell(0) != null);
-
-
-                int allowedSpaceCorners = 0;
-                do {
-                    allowedSpaceCorners++;
-                    row = sheet.getRow(allowedSpaceCorners + 4);
-                } while (row != null && row.getCell(4) != null);
-
-                gTip.setFreeSpace(new float[2 * freeSpaceCorners + 1][2]);
-                gTip.setAllowedSpace(new float[2 * allowedSpaceCorners + 1][2]);
-
-                for (int i = 0; i < freeSpaceCorners; i++) {
-                    row = sheet.getRow((i) + 4);
-                    gTip.getFreeSpace()[i][0] =
-                            (float) row.getCell(1).getNumericCellValue() / 10;
-                    gTip.getFreeSpace()[i][1] =
-                            (float) (row.getCell(0).getNumericCellValue() / 10);
-
-                    if (i == 0) {
-                        gTip.getFreeSpace()[2 * freeSpaceCorners][0] =
-                                (float) row.getCell(1).getNumericCellValue() / 10;
-                        gTip.getFreeSpace()[2 * freeSpaceCorners][1] =
-                                (float) (row.getCell(0).getNumericCellValue() / 10);
-                    }
-
-                    gTip.getFreeSpace()[2 * freeSpaceCorners - i - 1][0] =
-                            (float) row.getCell(2).getNumericCellValue() / 10;
-                    gTip.getFreeSpace()[2 * freeSpaceCorners - i - 1][1] =
-                            (float) (row.getCell(0).getNumericCellValue() / 10);
-                }
-
-                for (int i = 0; i < allowedSpaceCorners; i++) {
-                    row = sheet.getRow((i) + 4);
-                    gTip.getAllowedSpace()[i][0] =
-                            (float) row.getCell(5).getNumericCellValue() / 10;
-                    gTip.getAllowedSpace()[i][1] =
-                            (float) (row.getCell(4).getNumericCellValue() / 10);
-
-                    if (i == 0) {
-                        gTip.getAllowedSpace()[2 * allowedSpaceCorners][0] =
-                                (float) row.getCell(5).getNumericCellValue() / 10;
-                        gTip.getAllowedSpace()[2 * allowedSpaceCorners][1] =
-                                (float) (row.getCell(4).getNumericCellValue() / 10);
-                    }
-
-                    gTip.getAllowedSpace()[2 * allowedSpaceCorners - i - 1][0] =
-                            (float) row.getCell(6).getNumericCellValue() / 10;
-                    gTip.getAllowedSpace()[2 * allowedSpaceCorners - i - 1][1] =
-                            (float) (row.getCell(4).getNumericCellValue() / 10);
-                }
-                gTips.add(gTip);
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public StringBuffer analyzeGabari(GTip gTip, ObservableList<Coordinate> cargoG) throws ParseException {
+    public StringBuffer analyzeGabari(GTip gTip){
         StringBuffer result = new StringBuffer();
         GeometryFactory fact = new GeometryFactory();
         WKTReader wktRdr = new WKTReader(fact);
 
-        float[][] cargoCoordinate = new float[cargoG.size()][2];
+        float[][] cargoCoordinate = new float[data.size()][2];
 
-        for (int i = 0; i < cargoG.size(); i++) {
-            cargoCoordinate[i][0] = cargoG.get(i).x;
-            cargoCoordinate[i][1] = cargoG.get(i).y;
+        for (int i = 0; i < data.size(); i++) {
+            cargoCoordinate[i][0] = data.get(i).x;
+            cargoCoordinate[i][1] = data.get(i).y;
         }
 
         Geometry cargo = createPolygon(cargoCoordinate, wktRdr);
