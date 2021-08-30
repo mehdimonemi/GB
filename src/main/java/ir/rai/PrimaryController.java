@@ -2,6 +2,7 @@ package ir.rai;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import ir.rai.Data.Assignment;
@@ -10,6 +11,7 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.control.*;
@@ -17,8 +19,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.TableColumn.CellEditEvent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
@@ -87,7 +88,7 @@ public class PrimaryController {
         column2.setOnEditCommit(
                 (EventHandler<CellEditEvent<Coordinate, Float>>) t -> {
                     ((Coordinate) t.getTableView().getItems().get(
-                            t.getTablePosition().getRow())).setX(t.getNewValue());
+                            t.getTablePosition().getRow())).setY(t.getNewValue());
                 });
 
         table.setItems(data);
@@ -111,9 +112,13 @@ public class PrimaryController {
     }
 
     @FXML
-    private void calculate() throws ParseException {
-        HashMap<String, Integer> gabariResult =
-                new HashMap<>(assignment.main(origin.getText(), destination.getText()));
+    private void calculate() {
+        LinkedHashMap<String, Integer> gabariResult =
+                new LinkedHashMap<>(assignment.main(origin.getText(), destination.getText()));
+
+        while (tabPane.getTabs().size() > 0) {
+            tabPane.getTabs().remove(0);
+        }
 
         for (Map.Entry pair : gabariResult.entrySet()) {
             Tab tab = new Tab();
@@ -123,19 +128,19 @@ public class PrimaryController {
             label.setRotate(90);
 
             tab.setGraphic(new Group(label));
-
             StringBuffer result = analyzeGabari(gTips.get((Integer) pair.getValue() - 1));
             drawGabari(result, gTips.get((Integer) pair.getValue() - 1), tab);
             tabPane.getTabs().add(tab);
         }
-
     }
 
     private void drawGabari(StringBuffer result, GTip gTip, Tab tab) {
-        VBox box = new VBox();
-        box.setAlignment(Pos.CENTER);
+        FlowPane box = new FlowPane ();
+        box.setMinHeight(800);
+        box.setHgap(10);
+        box.setPadding(new Insets(10,10,10,10));
+
         Pane pane = new Pane();
-        box.getChildren().add(new Label(result.toString()));
         Path path = new Path();
         path.getElements().add(new MoveTo(gTip.getAllowedSpace()[0][0],
                 Math.abs(gTip.getMaxH() - gTip.getAllowedSpace()[0][1])));
@@ -162,8 +167,11 @@ public class PrimaryController {
             path.getElements().add(new LineTo(data.get(i).getX(),
                     Math.abs(gTip.getMaxH() - data.get(i).getY())));
         }
-        pane.getChildren().add(path);
-        box.getChildren().add(pane);
+        AnchorPane.setLeftAnchor(pane, 50.0);
+
+        pane.getChildren().addAll(path);
+        box.setAlignment(Pos.TOP_CENTER);
+        box.getChildren().addAll(new Label(result.toString()),pane);
         tab.setContent(box);
     }
 
@@ -184,15 +192,15 @@ public class PrimaryController {
         Geometry freeSpace = createPolygon(gTip.getFreeSpace(), wktRdr);
 
         if (allowSpace.contains(cargo)) {
-            result.append("cargo is okay with allow Space\n");
+            result.append("Cargo is okay with allow Space\n");
         } else {
-            result.append("cargo is not okay with allow Space\n");
+            result.append("Cargo is not okay with allow Space\n");
         }
 
         if (freeSpace.contains(cargo)) {
-            result.append("cargo is okay with free Space\n");
+            result.append("Cargo is okay with free Space\n");
         } else {
-            result.append("cargo is not okay with free Space\n");
+            result.append("Cargo is not okay with free Space\n");
         }
 
         return result;
@@ -215,7 +223,7 @@ public class PrimaryController {
         }
     }
 
-    class EditingCell extends TableCell<Coordinate, Float> {
+    static class EditingCell extends TableCell<Coordinate, Float> {
 
         private TextField textField;
 

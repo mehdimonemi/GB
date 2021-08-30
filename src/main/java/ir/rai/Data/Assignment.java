@@ -74,9 +74,8 @@ public class Assignment {
             String a = commodity.getOrigin();
             String b = commodity.getDestination();
 
-            gabariResult = new LinkedHashMap<>(
-                    Objects.requireNonNull(doModel(blocks, pathExceptions,
-                            stations, commodity, stationA, stationB, a, b, model)));
+            gabariResult = new LinkedHashMap<>(Objects.requireNonNull(doModel(blocks, pathExceptions,
+                    stations, commodity, stationA, stationB, a, b, model)));
 
         } catch (IloException e) {
             e.printStackTrace();
@@ -86,8 +85,8 @@ public class Assignment {
     }
 
     public static LinkedHashMap<String, Integer> doModel(ArrayList<Block> blocks, PathExceptions pathExceptions,
-                                                   ArrayList<Station> stations, Commodity commodity,
-                                                   int stationA, int stationB, String a, String b, IloCplex model) {
+                                                         ArrayList<Station> stations, Commodity commodity,
+                                                         int stationA, int stationB, String a, String b, IloCplex model) {
         LinkedHashMap<String, Integer> result = new LinkedHashMap<>();
         try {
             IloNumVar[] X = new IloNumVar[blocks.size()];

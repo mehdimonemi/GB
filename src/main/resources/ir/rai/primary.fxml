@@ -5,18 +5,24 @@
 <?import javafx.scene.layout.*?>
 
 <?import javafx.scene.control.skin.TableHeaderRow?>
+<?import javafx.scene.Group?>
 <VBox stylesheets="@primary.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="ir.rai.PrimaryController">
     <ToolBar>
         <Button fx:id="menu" onAction="#calculate" text="show"/>
     </ToolBar>
-    <HBox fx:id="hBox">
-        <Pane fx:id="pane" minWidth="500.0">
-            <TabPane fx:id="tabPane" minHeight="-Infinity" side="LEFT" rotateGraphic="true">
+    <SplitPane fx:id="hBox" orientation="HORIZONTAL">
+        <Pane fx:id="pane">
+            <TabPane fx:id="tabPane" side="LEFT" rotateGraphic="true">
+                <Tab closable="false">
+                    <graphic>
+                        <Group>
+                            <Label text="نتایج" rotate="90"></Label>
+                        </Group>
+                    </graphic>
+                    <VBox minHeight="800"></VBox>
+                </Tab>
             </TabPane>
-            <HBox.margin>
-                <Insets topRightBottomLeft="10"/>
-            </HBox.margin>
         </Pane>
 
         <VBox fx:id="leftContext" spacing="5">
@@ -30,7 +36,7 @@
             <ToolBar>
                 <ComboBox fx:id="coordinationBox"/>
             </ToolBar>
-            <Button fx:id="addButton" text="add"/>
+            <Button fx:id="addButton" text="add" alignment="CENTER_LEFT"/>
             <GridPane>
                 <Label text="First Parameter" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
                 <TextField fx:id="add1Para" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
@@ -38,5 +44,5 @@
                 <TextField fx:id="add2Para" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
             </GridPane>
         </VBox>
-    </HBox>
+    </SplitPane>
 </VBox>

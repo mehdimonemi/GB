@@ -1,3 +1,16 @@
 .tab-pane .tab-header-area .tab {
     -fx-pref-height: 150;
-    -fx-pref-width: 50;}
+    -fx-pref-width: 30;
+    -fx-font-family: 'B Nazanin';
+
+}
+
+.tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-padding: 5 0 0 5;
+    -fx-alignment: Center;
+    -fx-font-family: 'B Nazanin';
+}
+
+.tab {
+    -fx-font: 16px 'B Nazanin' ;
+}
