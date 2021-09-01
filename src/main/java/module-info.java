@@ -7,6 +7,7 @@ module ir.rai {
     requires org.jfxtras.styles.jmetro;
     requires org.locationtech.jts;
     requires cplex;
+    requires java.desktop;
 
     opens ir.rai to javafx.fxml;
 

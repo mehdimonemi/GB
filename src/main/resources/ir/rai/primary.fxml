@@ -36,13 +36,11 @@
             <ToolBar>
                 <ComboBox fx:id="coordinationBox"/>
             </ToolBar>
-            <Button fx:id="addButton" text="add" alignment="CENTER_LEFT"/>
-            <GridPane>
-                <Label text="First Parameter" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                <TextField fx:id="add1Para" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
-                <Label text="Second Parameter" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-                <TextField fx:id="add2Para" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
-            </GridPane>
+            <HBox>
+                <Button fx:id="addButton" text="add" />
+                <TextField fx:id="add1Para"/>
+                <TextField fx:id="add2Para"/>
+            </HBox>
         </VBox>
     </SplitPane>
 </VBox>

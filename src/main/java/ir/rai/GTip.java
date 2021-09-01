@@ -3,6 +3,7 @@ package ir.rai;
 public class GTip {
     private int maxH;
     private int maxW;
+    private String Name;
 
     private float[][] freeSpace;
     private float[][] allowedSpace;
@@ -38,5 +39,13 @@ public class GTip {
 
     public void setAllowedSpace(float[][] allowedSpace) {
         this.allowedSpace = allowedSpace;
+    }
+
+    public String getName() {
+        return Name;
+    }
+
+    public void setName(String name) {
+        Name = name;
     }
 }

@@ -1,11 +1,7 @@
 package ir.rai;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import ir.rai.Data.Assignment;
+import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -14,22 +10,43 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TableColumn.CellEditEvent;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.*;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.Pane;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
 import javafx.util.Callback;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 
+import java.awt.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import static ir.rai.Data.Assignment.gTips;
+import static ir.rai.Data.ExcelUtility.setCell;
+import static ir.rai.Data.ExcelUtility.setStyle;
+import static java.lang.Math.max;
 import static jfxtras.styles.jmetro.JMetroStyleClass.*;
 
 public class PrimaryController {
@@ -57,6 +74,8 @@ public class PrimaryController {
                     new Coordinate(100f, 300f)
             );
 
+    String outputFileLocation = "./output.xlsx";
+
     @FXML
     private void initialize() {
         assignment = new Assignment();
@@ -67,6 +86,30 @@ public class PrimaryController {
         table.getSelectionModel().setCellSelectionEnabled(true);
         table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         table.setEditable(true);
+        table.getSelectionModel().setCellSelectionEnabled(false);
+
+        table.setRowFactory(
+                tableView -> {
+                    TableRow<Coordinate> row = new TableRow<>();
+                    ContextMenu rowMenu = new ContextMenu();
+                    int rowIndex = row.getIndex();
+                    MenuItem addTop = new MenuItem("Add top");
+                    addTop.setOnAction(event -> data.add(max(0, rowIndex - 1),
+                            new Coordinate(Float.parseFloat(add1Para.getText()),
+                                    Float.parseFloat(add2Para.getText()))));
+                    MenuItem addBottom = new MenuItem("Add bottom");
+                    addBottom.setOnAction(event -> data.add(rowIndex + 1,
+                            new Coordinate(Float.parseFloat(add1Para.getText()),
+                                    Float.parseFloat(add2Para.getText()))));
+                    rowMenu.getItems().addAll(addTop, addBottom);
+
+                    // only display context menu for non-empty rows:
+                    row.contextMenuProperty().bind(
+                            Bindings.when(row.emptyProperty())
+                                    .then((ContextMenu) null)
+                                    .otherwise(rowMenu));
+                    return row;
+                });
 
         Callback<TableColumn<Coordinate, Float>, TableCell<Coordinate, Float>> cellFactory =
                 p -> new EditingCell();
@@ -120,6 +163,10 @@ public class PrimaryController {
             tabPane.getTabs().remove(0);
         }
 
+        isFileExist(outputFileLocation);
+        prepareOutput(outputFileLocation);
+
+        int rowCounter = 1;
         for (Map.Entry pair : gabariResult.entrySet()) {
             Tab tab = new Tab();
             tab.setClosable(false);
@@ -128,17 +175,90 @@ public class PrimaryController {
             label.setRotate(90);
 
             tab.setGraphic(new Group(label));
-            StringBuffer result = analyzeGabari(gTips.get((Integer) pair.getValue() - 1));
-            drawGabari(result, gTips.get((Integer) pair.getValue() - 1), tab);
+            boolean[] transportable = analyzeGabari(gTips.get((Integer) pair.getValue() - 1));
+            addToExcel(outputFileLocation,
+                    rowCounter, transportable,
+                    gTips.get((Integer) pair.getValue() - 1),
+                    pair.getKey().toString());
+            drawGabari(transportable, gTips.get((Integer) pair.getValue() - 1), tab);
             tabPane.getTabs().add(tab);
+            rowCounter++;
         }
     }
 
-    private void drawGabari(StringBuffer result, GTip gTip, Tab tab) {
-        FlowPane box = new FlowPane ();
+    private void addToExcel(String outputFileLocation, int rowNumber,
+                            boolean[] transportable, GTip gTip, String OD) {
+        FileOutputStream outFile;
+
+        try (
+                FileInputStream inFile = new FileInputStream(outputFileLocation);
+                XSSFWorkbook workbook = new XSSFWorkbook(inFile);
+        ) {
+            XSSFSheet sheet = workbook.getSheetAt(0);
+            XSSFRow row = sheet.createRow(rowNumber);
+
+            Color color;
+            if (rowNumber / 2.0 == 0) {
+                color = new Color(90, 178, 198);
+            } else
+                color = new Color(255, 255, 255, 255);
+
+            CellStyle style = setStyle(workbook, "B Zar", color);
+
+            setCell(row.createCell(0), OD, style);
+            setCell(row.createCell(1), gTip.getName(), style);
+            setCell(row.createCell(2), transportable[0] ? "قابل عبور" : "غیر قابل عبور", style);
+            setCell(row.createCell(3), "", style);
+            setCell(row.createCell(4), transportable[1] ? "قابل عبور" : "غیر قابل عبور", style);
+            setCell(row.createCell(5), "", style);
+
+            outFile = new FileOutputStream(outputFileLocation);
+            workbook.write(outFile);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void prepareOutput(String outputFileLocation) {
+        FileOutputStream outFile;
+
+        try (
+                XSSFWorkbook workbook = new XSSFWorkbook();
+        ) {
+            XSSFSheet sheet = workbook.createSheet("خروجی");
+            sheet.setRightToLeft(true);
+            XSSFRow row = sheet.createRow(0);
+
+            CellStyle style = setStyle(workbook, "B Zar", new Color(210, 202, 159));
+
+            setCell(row.createCell(0), "مسیر", style);
+            setCell(row.createCell(1), "تیب گاباری", style);
+            setCell(row.createCell(2), "قابلیت عبور فضای آزاد", style);
+            setCell(row.createCell(3), "مساحت بیرون از حد مجاز", style);
+            setCell(row.createCell(4), "قابلیت عبور از حد مجاز", style);
+            setCell(row.createCell(5), "مساحت بیرون از فضای آزاد", style);
+
+            outFile = new FileOutputStream(outputFileLocation);
+            workbook.write(outFile);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void isFileExist(String fileName) {
+        File f = new File(fileName);
+        if (f.exists() && !f.isDirectory()) {
+            f.delete();
+        }
+    }
+
+    private void drawGabari(boolean[] result, GTip gTip, Tab tab) {
+        FlowPane box = new FlowPane();
         box.setMinHeight(800);
         box.setHgap(10);
-        box.setPadding(new Insets(10,10,10,10));
+        box.setPadding(new Insets(10, 10, 10, 10));
 
         Pane pane = new Pane();
         Path path = new Path();
@@ -171,12 +291,12 @@ public class PrimaryController {
 
         pane.getChildren().addAll(path);
         box.setAlignment(Pos.TOP_CENTER);
-        box.getChildren().addAll(new Label(result.toString()),pane);
+        box.getChildren().addAll(new Label(Boolean.toString(result[0]) + "\n" + Boolean.toString(result[1])), pane);
         tab.setContent(box);
     }
 
-    public StringBuffer analyzeGabari(GTip gTip){
-        StringBuffer result = new StringBuffer();
+    public boolean[] analyzeGabari(GTip gTip) {
+        boolean[] result = new boolean[2];
         GeometryFactory fact = new GeometryFactory();
         WKTReader wktRdr = new WKTReader(fact);
 
@@ -192,15 +312,11 @@ public class PrimaryController {
         Geometry freeSpace = createPolygon(gTip.getFreeSpace(), wktRdr);
 
         if (allowSpace.contains(cargo)) {
-            result.append("Cargo is okay with allow Space\n");
-        } else {
-            result.append("Cargo is not okay with allow Space\n");
+            result[0] = true;
         }
 
         if (freeSpace.contains(cargo)) {
-            result.append("Cargo is okay with free Space\n");
-        } else {
-            result.append("Cargo is not okay with free Space\n");
+            result[1] = true;
         }
 
         return result;
