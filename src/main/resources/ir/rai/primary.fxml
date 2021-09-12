@@ -31,11 +31,10 @@
                 <TextField fx:id="origin" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
                 <Label text="Destination" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
                 <TextField fx:id="destination" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                <ComboBox fx:id="coordinationBox" GridPane.columnIndex="2" GridPane.halignment="LEFT"
+                          GridPane.rowIndex="1" GridPane.columnSpan="2"/>
             </GridPane>
             <TableView fx:id="table" editable="true"/>
-            <ToolBar>
-                <ComboBox fx:id="coordinationBox"/>
-            </ToolBar>
             <HBox>
                 <Button fx:id="addButton" text="add" />
                 <TextField fx:id="add1Para"/>

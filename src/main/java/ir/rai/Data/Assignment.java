@@ -210,9 +210,7 @@ public class Assignment {
                     int temp3 = commodity.getBlocks().get(0).getGabariCode();
                     for (Block block : commodity.getBlocks()) {
                         if (block.getGabariCode() != temp3) {
-                            if (temp3 != 0)
-                                result.put(temp1 + " - " + temp2, temp3);
-
+                            result.put(temp1 + " - " + temp2, temp3);
                             temp1 = block.getOrigin();
                             temp2 = block.getDestination();
                             temp3 = block.getGabariCode();

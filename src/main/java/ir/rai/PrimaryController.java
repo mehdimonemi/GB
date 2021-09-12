@@ -30,6 +30,7 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.io.ParseException;
@@ -40,6 +41,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -63,15 +65,15 @@ public class PrimaryController {
     ComboBox<String> coordinationBox;
 
     @FXML
-    TableView<Coordinate> table;
+    TableView<MyCoordinate> table;
     Assignment assignment;
-    private final ObservableList<Coordinate> data =
+    private final ObservableList<MyCoordinate> data =
             FXCollections.observableArrayList(
-                    new Coordinate(100f, 300f),
-                    new Coordinate(100f, 200f),
-                    new Coordinate(300f, 200f),
-                    new Coordinate(300f, 300f),
-                    new Coordinate(100f, 300f)
+                    new MyCoordinate(100f, 300f),
+                    new MyCoordinate(100f, 200f),
+                    new MyCoordinate(410f, 200f),
+                    new MyCoordinate(410f, 300f),
+                    new MyCoordinate(100f, 300f)
             );
 
     String outputFileLocation = "./output.xlsx";
@@ -90,16 +92,18 @@ public class PrimaryController {
 
         table.setRowFactory(
                 tableView -> {
-                    TableRow<Coordinate> row = new TableRow<>();
+                    TableRow<MyCoordinate> row = new TableRow<>();
                     ContextMenu rowMenu = new ContextMenu();
                     int rowIndex = row.getIndex();
                     MenuItem addTop = new MenuItem("Add top");
-                    addTop.setOnAction(event -> data.add(max(0, rowIndex - 1),
-                            new Coordinate(Float.parseFloat(add1Para.getText()),
+
+                    ;
+                    addTop.setOnAction(event -> data.add(max(0, data.indexOf(row.getItem()) - 1),
+                            new MyCoordinate(Float.parseFloat(add1Para.getText()),
                                     Float.parseFloat(add2Para.getText()))));
                     MenuItem addBottom = new MenuItem("Add bottom");
-                    addBottom.setOnAction(event -> data.add(rowIndex + 1,
-                            new Coordinate(Float.parseFloat(add1Para.getText()),
+                    addBottom.setOnAction(event -> data.add(data.indexOf(row.getItem()) + 1,
+                            new MyCoordinate(Float.parseFloat(add1Para.getText()),
                                     Float.parseFloat(add2Para.getText()))));
                     rowMenu.getItems().addAll(addTop, addBottom);
 
@@ -111,26 +115,26 @@ public class PrimaryController {
                     return row;
                 });
 
-        Callback<TableColumn<Coordinate, Float>, TableCell<Coordinate, Float>> cellFactory =
+        Callback<TableColumn<MyCoordinate, Float>, TableCell<MyCoordinate, Float>> cellFactory =
                 p -> new EditingCell();
 
         TableColumn column1 = new TableColumn("First Parameter");
         column1.setMinWidth(150);
-        column1.setCellValueFactory(new PropertyValueFactory<Coordinate, Float>("x"));
+        column1.setCellValueFactory(new PropertyValueFactory<MyCoordinate, Float>("x"));
         column1.setCellFactory(cellFactory);
         column1.setOnEditCommit(
-                (EventHandler<CellEditEvent<Coordinate, Float>>) t -> {
-                    ((Coordinate) t.getTableView().getItems().get(
+                (EventHandler<CellEditEvent<MyCoordinate, Float>>) t -> {
+                    ((MyCoordinate) t.getTableView().getItems().get(
                             t.getTablePosition().getRow())).setX(t.getNewValue());
                 });
 
-        TableColumn<Coordinate, Float> column2 = new TableColumn<Coordinate, Float>("Second Parameter");
+        TableColumn<MyCoordinate, Float> column2 = new TableColumn<MyCoordinate, Float>("Second Parameter");
         column2.setMinWidth(150);
-        column2.setCellValueFactory(new PropertyValueFactory<Coordinate, Float>("y"));
+        column2.setCellValueFactory(new PropertyValueFactory<MyCoordinate, Float>("y"));
         column2.setCellFactory(cellFactory);
         column2.setOnEditCommit(
-                (EventHandler<CellEditEvent<Coordinate, Float>>) t -> {
-                    ((Coordinate) t.getTableView().getItems().get(
+                (EventHandler<CellEditEvent<MyCoordinate, Float>>) t -> {
+                    ((MyCoordinate) t.getTableView().getItems().get(
                             t.getTablePosition().getRow())).setY(t.getNewValue());
                 });
 
@@ -148,7 +152,7 @@ public class PrimaryController {
         addButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
-                data.add(new Coordinate(Float.parseFloat(add1Para.getText()), Float.parseFloat(add2Para.getText())));
+                data.add(new MyCoordinate(Float.parseFloat(add1Para.getText()), Float.parseFloat(add2Para.getText())));
             }
         });
 
@@ -173,21 +177,23 @@ public class PrimaryController {
 
             Label label = new Label(pair.getKey().toString());
             label.setRotate(90);
-
+            ArrayList<Coordinate[]> transportable = null;
             tab.setGraphic(new Group(label));
-            boolean[] transportable = analyzeGabari(gTips.get((Integer) pair.getValue() - 1));
-            addToExcel(outputFileLocation,
-                    rowCounter, transportable,
-                    gTips.get((Integer) pair.getValue() - 1),
-                    pair.getKey().toString());
-            drawGabari(transportable, gTips.get((Integer) pair.getValue() - 1), tab);
+            if ((Integer) pair.getValue() != 0) {
+                transportable = analyzeGabari(gTips.get((Integer) pair.getValue() - 1));
+                addToExcel(outputFileLocation,
+                        rowCounter, transportable,
+                        ((Integer) pair.getValue() - 1),
+                        pair.getKey().toString());
+            }
+            drawGabari(transportable, ((Integer) pair.getValue() - 1), tab);
             tabPane.getTabs().add(tab);
             rowCounter++;
         }
     }
 
     private void addToExcel(String outputFileLocation, int rowNumber,
-                            boolean[] transportable, GTip gTip, String OD) {
+                            ArrayList<Coordinate[]> transportable, int gTipNumber, String OD) {
         FileOutputStream outFile;
 
         try (
@@ -206,11 +212,21 @@ public class PrimaryController {
             CellStyle style = setStyle(workbook, "B Zar", color);
 
             setCell(row.createCell(0), OD, style);
-            setCell(row.createCell(1), gTip.getName(), style);
-            setCell(row.createCell(2), transportable[0] ? "قابل عبور" : "غیر قابل عبور", style);
-            setCell(row.createCell(3), "", style);
-            setCell(row.createCell(4), transportable[1] ? "قابل عبور" : "غیر قابل عبور", style);
-            setCell(row.createCell(5), "", style);
+            if (gTipNumber > 0) {
+                GTip gTip = gTips.get(gTipNumber);
+                setCell(row.createCell(1), gTip.getName(), style);
+                setCell(row.createCell(2), transportable.get(1).length == 0 ? "قابل عبور" : "غیر قابل عبور", style);
+                setCell(row.createCell(3), "", style);
+                setCell(row.createCell(4), transportable.get(2).length == 0 ? "قابل عبور" : "غیر قابل عبور", style);
+                setCell(row.createCell(5), "", style);
+            } else {
+                setCell(row.createCell(1), "نامشخص", style);
+                setCell(row.createCell(2), "", style);
+                setCell(row.createCell(3), "", style);
+                setCell(row.createCell(4), "", style);
+                setCell(row.createCell(5), "", style);
+            }
+
 
             outFile = new FileOutputStream(outputFileLocation);
             workbook.write(outFile);
@@ -254,49 +270,66 @@ public class PrimaryController {
         }
     }
 
-    private void drawGabari(boolean[] result, GTip gTip, Tab tab) {
+    private void drawGabari(ArrayList<Coordinate[]> result, int gTipNumber, Tab tab) {
         FlowPane box = new FlowPane();
         box.setMinHeight(800);
         box.setHgap(10);
         box.setPadding(new Insets(10, 10, 10, 10));
-
         Pane pane = new Pane();
-        Path path = new Path();
-        path.getElements().add(new MoveTo(gTip.getAllowedSpace()[0][0],
-                Math.abs(gTip.getMaxH() - gTip.getAllowedSpace()[0][1])));
-        for (int i = 1; i < gTip.getAllowedSpace().length; i++) {
-            path.getElements().add(new LineTo(gTip.getAllowedSpace()[i][0],
-                    Math.abs(gTip.getMaxH() - gTip.getAllowedSpace()[i][1])));
+
+        if (gTipNumber > 0) {
+            Path path = null;
+            GTip gTip = gTips.get(gTipNumber);
+
+            for (int j = 0; j < result.size(); j++) {
+                path = new Path();
+                if (result.get(j).length > 0) {
+                    path.getElements().add(new MoveTo(result.get(j)[0].x,
+                            Math.abs(gTip.getMaxH() - result.get(j)[0].y)));
+                    for (int i = 1; i < result.get(j).length; i++) {
+                        path.getElements().add(new LineTo(result.get(j)[i].x,
+                                Math.abs(gTip.getMaxH() - result.get(j)[i].y)));
+                    }
+                    if (j == 0)
+                        path.setStroke(new javafx.scene.paint.Color(0, 1, 0, 1));
+                    if (j == 1)
+                        path.setStroke(new javafx.scene.paint.Color(1, 0.8, 0, 1));
+                    if (j == 2)
+                        path.setStroke(new javafx.scene.paint.Color(1, 0, 0, 1));
+
+                    pane.getChildren().add(path);
+                }
+            }
+
+            path = new Path();
+            path.getElements().add(new MoveTo(gTip.getAllowedSpace()[0][0],
+                    Math.abs(gTip.getMaxH() - gTip.getAllowedSpace()[0][1])));
+            for (int i = 1; i < gTip.getAllowedSpace().length; i++) {
+                path.getElements().add(new LineTo(gTip.getAllowedSpace()[i][0],
+                        Math.abs(gTip.getMaxH() - gTip.getAllowedSpace()[i][1])));
+            }
+            pane.getChildren().add(path);
+
+            path = new Path();
+            path.getElements().add(new MoveTo(gTip.getFreeSpace()[0][0],
+                    Math.abs(gTip.getMaxH() - gTip.getFreeSpace()[0][1])));
+            for (int i = 1; i < gTip.getFreeSpace().length; i++) {
+                path.getElements().add(new LineTo(gTip.getFreeSpace()[i][0],
+                        Math.abs(gTip.getMaxH() - gTip.getFreeSpace()[i][1])));
+            }
+
+            AnchorPane.setLeftAnchor(pane, 50.0);
+
+            pane.getChildren().addAll(path);
+        } else {
+            pane.getChildren().add(new Label("گاباری این بخش مسیر ناشناخته است"));
         }
-        pane.getChildren().add(path);
-
-        path = new Path();
-        path.getElements().add(new MoveTo(gTip.getFreeSpace()[0][0],
-                Math.abs(gTip.getMaxH() - gTip.getFreeSpace()[0][1])));
-        for (int i = 1; i < gTip.getFreeSpace().length; i++) {
-            path.getElements().add(new LineTo(gTip.getFreeSpace()[i][0],
-                    Math.abs(gTip.getMaxH() - gTip.getFreeSpace()[i][1])));
-        }
-        pane.getChildren().add(path);
-
-
-        path = new Path();
-        path.getElements().add(new MoveTo(data.get(0).getX(),
-                Math.abs(gTip.getMaxH() - data.get(0).getY())));
-        for (int i = 1; i < data.size(); i++) {
-            path.getElements().add(new LineTo(data.get(i).getX(),
-                    Math.abs(gTip.getMaxH() - data.get(i).getY())));
-        }
-        AnchorPane.setLeftAnchor(pane, 50.0);
-
-        pane.getChildren().addAll(path);
         box.setAlignment(Pos.TOP_CENTER);
-        box.getChildren().addAll(new Label(Boolean.toString(result[0]) + "\n" + Boolean.toString(result[1])), pane);
+        box.getChildren().addAll(pane);
         tab.setContent(box);
     }
 
-    public boolean[] analyzeGabari(GTip gTip) {
-        boolean[] result = new boolean[2];
+    public ArrayList<Coordinate[]> analyzeGabari(GTip gTip) {
         GeometryFactory fact = new GeometryFactory();
         WKTReader wktRdr = new WKTReader(fact);
 
@@ -311,13 +344,23 @@ public class PrimaryController {
         Geometry allowSpace = createPolygon(gTip.getAllowedSpace(), wktRdr);
         Geometry freeSpace = createPolygon(gTip.getFreeSpace(), wktRdr);
 
-        if (allowSpace.contains(cargo)) {
-            result[0] = true;
+        Coordinate[] cargo1 = cargo.intersection(allowSpace).getCoordinates();
+        Coordinate[] cargo2 = cargo.difference(allowSpace).getCoordinates();
+        Coordinate[] cargo3 = null;
+        Coordinate[] cargo4 = null;
+        if (cargo2.length > 0) {
+            cargo3 = createPolygon(cargo2, wktRdr).difference(freeSpace).getCoordinates();
         }
 
-        if (freeSpace.contains(cargo)) {
-            result[1] = true;
-        }
+        if (cargo3.length > 0)
+            cargo4 = createPolygon(cargo2, wktRdr).intersection(freeSpace).getCoordinates();
+        else
+            cargo4 = cargo2;
+
+        ArrayList<Coordinate[]> result = new ArrayList<>();
+        result.add(cargo1);
+        result.add(cargo4);
+        result.add(cargo3);
 
         return result;
     }
@@ -339,7 +382,24 @@ public class PrimaryController {
         }
     }
 
-    static class EditingCell extends TableCell<Coordinate, Float> {
+    public Geometry createPolygon(Coordinate[] cordinates, WKTReader wktRdr) {
+        StringBuilder wktA = new StringBuilder("POLYGON ((");
+        for (int i = 0; i < cordinates.length; i++) {
+            if (i != cordinates.length - 1) {
+                wktA.append(cordinates[i].x).append(" ").append(cordinates[i].y).append(", ");
+            } else {
+                wktA.append(cordinates[i].x).append(" ").append(cordinates[i].y).append("))");
+            }
+        }
+        try {
+            return wktRdr.read(wktA.toString());
+        } catch (ParseException e) {
+            System.out.println(e.getMessage());
+            return null;
+        }
+    }
+
+    static class EditingCell extends TableCell<MyCoordinate, Float> {
 
         private TextField textField;
 

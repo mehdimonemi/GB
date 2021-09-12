@@ -1,10 +1,10 @@
 package ir.rai;
 
-public class Coordinate {
+public class MyCoordinate {
     float x;
     float y;
 
-    public Coordinate(Float x, Float y) {
+    public MyCoordinate(Float x, Float y) {
         this.x = x;
         this.y = y;
     }
