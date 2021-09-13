@@ -15,11 +15,10 @@
     -fx-font: 16px 'B Nazanin';
 }
 
-GridPane {
-    -fx-padding: 10;
-    -fx-border-style: solid;
-    -fx-border-width: 2;
-    -fx-border-insets: 5;
-    -fx-border-radius: 5;
-    -fx-border-color: rgba(255, 0, 0, 0.8);
-}
+/*GridPane {*/
+/*    -fx-padding: 10;*/
+/*    -fx-border-style: solid;*/
+/*    -fx-border-width: 2;*/
+/*    -fx-border-insets: 5;*/
+/*    -fx-border-radius: 5;*/
+/*}*/

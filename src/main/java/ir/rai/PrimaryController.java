@@ -8,6 +8,7 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
+import javafx.geometry.NodeOrientation;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.control.Button;
@@ -21,6 +22,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
@@ -30,6 +32,8 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.locationtech.jts.algorithm.distance.DistanceToPoint;
+import org.locationtech.jts.algorithm.distance.PointPairDistance;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -71,8 +75,8 @@ public class PrimaryController {
             FXCollections.observableArrayList(
                     new MyCoordinate(100f, 300f),
                     new MyCoordinate(100f, 200f),
-                    new MyCoordinate(410f, 200f),
-                    new MyCoordinate(410f, 300f),
+                    new MyCoordinate(390f, 200f),
+                    new MyCoordinate(390f, 300f),
                     new MyCoordinate(100f, 300f)
             );
 
@@ -179,21 +183,35 @@ public class PrimaryController {
             label.setRotate(90);
             ArrayList<Coordinate[]> transportable = null;
             tab.setGraphic(new Group(label));
-            if ((Integer) pair.getValue() != 0) {
+
+            double outOfAllow = 0;
+            double outOfFree = 0;
+            if ((Integer) pair.getValue() >= 1) {
                 transportable = analyzeGabari(gTips.get((Integer) pair.getValue() - 1));
+                outOfAllow = transportable.get(1).length > 0 ?
+                        computeOutOfGabari(gTips.get((Integer) pair.getValue() - 1).getAllowedSpace(), transportable.get(1)) :
+                        0;
+                outOfFree = transportable.get(2).length > 0 ?
+                        computeOutOfGabari(gTips.get((Integer) pair.getValue() - 1).getFreeSpace(), transportable.get(2)) :
+                        0;
                 addToExcel(outputFileLocation,
                         rowCounter, transportable,
+                        outOfAllow,
+                        outOfFree,
                         ((Integer) pair.getValue() - 1),
                         pair.getKey().toString());
+            } else {
+                addToExcel(outputFileLocation, rowCounter, null, 0, 0,
+                        ((Integer) pair.getValue() - 1), pair.getKey().toString());
             }
-            drawGabari(transportable, ((Integer) pair.getValue() - 1), tab);
-            tabPane.getTabs().add(tab);
             rowCounter++;
+            drawGabari(transportable, ((Integer) pair.getValue() - 1), outOfAllow, outOfFree, tab);
+            tabPane.getTabs().add(tab);
         }
     }
 
     private void addToExcel(String outputFileLocation, int rowNumber,
-                            ArrayList<Coordinate[]> transportable, int gTipNumber, String OD) {
+                            ArrayList<Coordinate[]> transportable, double outOfAllow, double outOffree, int gTipNumber, String OD) {
         FileOutputStream outFile;
 
         try (
@@ -212,13 +230,13 @@ public class PrimaryController {
             CellStyle style = setStyle(workbook, "B Zar", color);
 
             setCell(row.createCell(0), OD, style);
-            if (gTipNumber > 0) {
+            if (gTipNumber >= 0) {
                 GTip gTip = gTips.get(gTipNumber);
                 setCell(row.createCell(1), gTip.getName(), style);
                 setCell(row.createCell(2), transportable.get(1).length == 0 ? "قابل عبور" : "غیر قابل عبور", style);
-                setCell(row.createCell(3), "", style);
+                setCell(row.createCell(3), outOfAllow, style);
                 setCell(row.createCell(4), transportable.get(2).length == 0 ? "قابل عبور" : "غیر قابل عبور", style);
-                setCell(row.createCell(5), "", style);
+                setCell(row.createCell(5), outOffree, style);
             } else {
                 setCell(row.createCell(1), "نامشخص", style);
                 setCell(row.createCell(2), "", style);
@@ -251,9 +269,9 @@ public class PrimaryController {
             setCell(row.createCell(0), "مسیر", style);
             setCell(row.createCell(1), "تیب گاباری", style);
             setCell(row.createCell(2), "قابلیت عبور فضای آزاد", style);
-            setCell(row.createCell(3), "مساحت بیرون از حد مجاز", style);
+            setCell(row.createCell(3), "بیرون زدگی از فضای آزاد", style);
             setCell(row.createCell(4), "قابلیت عبور از حد مجاز", style);
-            setCell(row.createCell(5), "مساحت بیرون از فضای آزاد", style);
+            setCell(row.createCell(5), "بیرون زدگی از حد مجاز", style);
 
             outFile = new FileOutputStream(outputFileLocation);
             workbook.write(outFile);
@@ -270,16 +288,30 @@ public class PrimaryController {
         }
     }
 
-    private void drawGabari(ArrayList<Coordinate[]> result, int gTipNumber, Tab tab) {
+    private void drawGabari(ArrayList<Coordinate[]> result, int gTipNumber, double outOfAllow, double outOfFree, Tab tab) {
         FlowPane box = new FlowPane();
         box.setMinHeight(800);
-        box.setHgap(10);
+        box.setHgap(100);
         box.setPadding(new Insets(10, 10, 10, 10));
+        GridPane header = new GridPane();
+        header.setHgap(20);
+        header.setVgap(5);
+        header.setNodeOrientation(NodeOrientation.RIGHT_TO_LEFT);
+        header.setPadding(new Insets(0, 0, 10, 10));
         Pane pane = new Pane();
 
-        if (gTipNumber > 0) {
+        if (gTipNumber >= 0) {
             Path path = null;
             GTip gTip = gTips.get(gTipNumber);
+
+            header.add(new Label("نوع گاباری"), 0, 0);
+            header.add(new Label(gTip.getName()), 1, 0);
+
+            header.add(new Label("بیرون زدگی از فضای آزاد"), 0, 1);
+            header.add(new Label(outOfAllow + " " + "سانتی متر"), 1, 1);
+
+            header.add(new Label("بیرون زدگی از حد مجاز"), 0, 2);
+            header.add(new Label(outOfFree + " " + "سانتی متر"), 1, 2);
 
             for (int j = 0; j < result.size(); j++) {
                 path = new Path();
@@ -297,6 +329,7 @@ public class PrimaryController {
                     if (j == 2)
                         path.setStroke(new javafx.scene.paint.Color(1, 0, 0, 1));
 
+                    path.setStrokeWidth(2);
                     pane.getChildren().add(path);
                 }
             }
@@ -308,6 +341,7 @@ public class PrimaryController {
                 path.getElements().add(new LineTo(gTip.getAllowedSpace()[i][0],
                         Math.abs(gTip.getMaxH() - gTip.getAllowedSpace()[i][1])));
             }
+            path.setStrokeWidth(2);
             pane.getChildren().add(path);
 
             path = new Path();
@@ -317,7 +351,7 @@ public class PrimaryController {
                 path.getElements().add(new LineTo(gTip.getFreeSpace()[i][0],
                         Math.abs(gTip.getMaxH() - gTip.getFreeSpace()[i][1])));
             }
-
+            path.setStrokeWidth(2);
             AnchorPane.setLeftAnchor(pane, 50.0);
 
             pane.getChildren().addAll(path);
@@ -325,7 +359,7 @@ public class PrimaryController {
             pane.getChildren().add(new Label("گاباری این بخش مسیر ناشناخته است"));
         }
         box.setAlignment(Pos.TOP_CENTER);
-        box.getChildren().addAll(pane);
+        box.getChildren().addAll(header, pane);
         tab.setContent(box);
     }
 
@@ -467,5 +501,20 @@ public class PrimaryController {
         private String getString() {
             return getItem() == null ? "" : getItem().toString();
         }
+    }
+
+    public double computeOutOfGabari(float[][] gabari, Coordinate[] outOfGabari) {
+        double result = 0;
+        GeometryFactory fact = new GeometryFactory();
+        WKTReader wktRdr = new WKTReader(fact);
+
+        PointPairDistance pointPairDistance;
+        Geometry a = createPolygon(gabari, wktRdr);
+        for (Coordinate coordinate : outOfGabari) {
+            pointPairDistance = new PointPairDistance();
+            DistanceToPoint.computeDistance(a, coordinate, pointPairDistance);
+            result = max(result, pointPairDistance.getDistance());
+        }
+        return result;
     }
 }
