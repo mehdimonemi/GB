@@ -73,11 +73,11 @@ public class PrimaryController {
     Assignment assignment;
     private final ObservableList<MyCoordinate> data =
             FXCollections.observableArrayList(
-                    new MyCoordinate(100f, 300f),
-                    new MyCoordinate(100f, 200f),
+                    new MyCoordinate(10f, 300f),
+                    new MyCoordinate(10f, 200f),
                     new MyCoordinate(390f, 200f),
                     new MyCoordinate(390f, 300f),
-                    new MyCoordinate(100f, 300f)
+                    new MyCoordinate(10f, 300f)
             );
 
     String outputFileLocation = "./output.xlsx";
