@@ -15,7 +15,7 @@ target
 cplex
 deploy/cplex
 deploy/fx
-deploy/jdk-11.0.11.9-hotspot
+deploy/jdk-11.0.11.9-openj9
 deploy/GB.jar
 
 # Package Files #

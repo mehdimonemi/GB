@@ -1,8 +1,8 @@
 package ir.rai;
 
 public class GTip {
-    private int maxH;
-    private int maxW;
+    public static int maxH = 580;
+    public static int maxW = 500;
     private String Name;
 
     private float[][] freeSpace;

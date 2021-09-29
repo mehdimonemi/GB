@@ -9,12 +9,12 @@
 <VBox stylesheets="@primary.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="ir.rai.PrimaryController">
     <ToolBar>
-        <Button fx:id="menu" onAction="#calculate" text="show"/>
+        <Button fx:id="menu" onAction="#calculate" text="Calculate"/>
     </ToolBar>
     <SplitPane fx:id="hBox" orientation="HORIZONTAL">
         <Pane fx:id="pane">
             <TabPane fx:id="tabPane" side="LEFT" rotateGraphic="true">
-                <Tab closable="false">
+                <Tab fx:id="defaultTab" closable="false">
                     <graphic>
                         <Group>
                             <Label text="نتایج" rotate="90"></Label>

@@ -1,6 +1,9 @@
 package ir.rai;
 
+import com.jsevy.jdxf.DXFDocument;
+import com.jsevy.jdxf.DXFGraphics;
 import ir.rai.Data.Assignment;
+import ir.rai.Data.Chart;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -20,10 +23,7 @@ import javafx.scene.control.TableColumn.CellEditEvent;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Pane;
+import javafx.scene.layout.*;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
@@ -41,10 +41,8 @@ import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 
 import java.awt.*;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -60,6 +58,9 @@ public class PrimaryController {
     TabPane tabPane;
 
     @FXML
+    Tab defaultTab;
+
+    @FXML
     Button addButton;
 
     @FXML
@@ -71,21 +72,32 @@ public class PrimaryController {
     @FXML
     TableView<MyCoordinate> table;
     Assignment assignment;
-    private final ObservableList<MyCoordinate> data =
+    public static ArrayList<MyCoordinate> realData;
+    private ObservableList<MyCoordinate> data =
             FXCollections.observableArrayList(
-                    new MyCoordinate(10f, 300f),
+                    new MyCoordinate(10f, 450f),
                     new MyCoordinate(10f, 200f),
-                    new MyCoordinate(390f, 200f),
-                    new MyCoordinate(390f, 300f),
-                    new MyCoordinate(10f, 300f)
+                    new MyCoordinate(410f, 200f),
+                    new MyCoordinate(410f, 450f),
+                    new MyCoordinate(10f, 450f)
             );
 
-    String outputFileLocation = "./output.xlsx";
+    String outputFileLocation = "./output/output.xlsx";
+    String outputDXFLocation = "./output/";
 
     @FXML
     private void initialize() {
         assignment = new Assignment();
+        checkOutputFile(outputFileLocation);
         configureTable();
+
+        FlowPane box = new FlowPane();
+        GridPane header = new GridPane();
+        StackPane pane = new StackPane();
+        header.add(new Label("نوع گاباری"), 0, 0);
+        pane.getChildren().add(new Chart(data));
+        box.getChildren().addAll(header, pane);
+        defaultTab.setContent(box);
     }
 
     private void configureTable() {
@@ -109,7 +121,10 @@ public class PrimaryController {
                     addBottom.setOnAction(event -> data.add(data.indexOf(row.getItem()) + 1,
                             new MyCoordinate(Float.parseFloat(add1Para.getText()),
                                     Float.parseFloat(add2Para.getText()))));
-                    rowMenu.getItems().addAll(addTop, addBottom);
+
+                    MenuItem deleteBottom = new MenuItem("Delete");
+                    deleteBottom.setOnAction(event -> data.remove(data.get(data.indexOf(row.getItem()))));
+                    rowMenu.getItems().addAll(addTop, addBottom, deleteBottom);
 
                     // only display context menu for non-empty rows:
                     row.contextMenuProperty().bind(
@@ -164,6 +179,13 @@ public class PrimaryController {
 
     @FXML
     private void calculate() {
+        realData = new ArrayList<>();
+        if (coordinationBox.getValue().equals("Length and Width")) {
+            changeToXY();
+        } else {
+            realData.addAll(data);
+        }
+
         LinkedHashMap<String, Integer> gabariResult =
                 new LinkedHashMap<>(assignment.main(origin.getText(), destination.getText()));
 
@@ -172,7 +194,7 @@ public class PrimaryController {
         }
 
         isFileExist(outputFileLocation);
-        prepareOutput(outputFileLocation);
+        prepareExcel(outputFileLocation);
 
         int rowCounter = 1;
         for (Map.Entry pair : gabariResult.entrySet()) {
@@ -206,19 +228,42 @@ public class PrimaryController {
             }
             rowCounter++;
             drawGabari(transportable, ((Integer) pair.getValue() - 1), outOfAllow, outOfFree, tab);
+            createDXF(transportable, ((Integer) pair.getValue() - 1), pair.getKey().toString());
             tabPane.getTabs().add(tab);
         }
     }
 
+    private void checkOutputFile(String outputFileLocation) {
+        try (
+                FileInputStream inFile = new FileInputStream(outputFileLocation);
+                XSSFWorkbook workbook = new XSSFWorkbook(inFile);
+        ) {
+            XSSFSheet sheet = workbook.getSheet("ورودی واگن یا بار");
+            data = FXCollections.observableArrayList();
+            origin.setText(sheet.getRow(0).getCell(1).getStringCellValue());
+            destination.setText(sheet.getRow(1).getCell(1).getStringCellValue());
+
+            int temp = sheet.getLastRowNum();
+            for (int i = 3; i <= sheet.getLastRowNum(); i++) {
+                data.add(new MyCoordinate(
+                        (float) sheet.getRow(i).getCell(0).getNumericCellValue(),
+                        (float) sheet.getRow(i).getCell(1).getNumericCellValue()));
+            }
+        } catch (IOException e) {
+            System.out.println("There is no Output File, or the file has a problem");
+        }
+    }
+
     private void addToExcel(String outputFileLocation, int rowNumber,
-                            ArrayList<Coordinate[]> transportable, double outOfAllow, double outOffree, int gTipNumber, String OD) {
+                            ArrayList<Coordinate[]> transportable, double outOfAllow,
+                            double outOffree, int gTipNumber, String OD) {
         FileOutputStream outFile;
 
         try (
                 FileInputStream inFile = new FileInputStream(outputFileLocation);
                 XSSFWorkbook workbook = new XSSFWorkbook(inFile);
         ) {
-            XSSFSheet sheet = workbook.getSheetAt(0);
+            XSSFSheet sheet = workbook.getSheet("خروجی");
             XSSFRow row = sheet.createRow(rowNumber);
 
             Color color;
@@ -254,17 +299,37 @@ public class PrimaryController {
         }
     }
 
-    private void prepareOutput(String outputFileLocation) {
+    private void prepareExcel(String outputFileLocation) {
         FileOutputStream outFile;
 
-        try (
-                XSSFWorkbook workbook = new XSSFWorkbook();
-        ) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+
+            XSSFSheet sheet1 = workbook.createSheet("ورودی واگن یا بار");
+            sheet1.setRightToLeft(true);
+            CellStyle style = setStyle(workbook, "B Zar", new Color(210, 202, 159));
+            XSSFRow row1 = sheet1.createRow(0);
+            setCell(row1.createCell(0), "مبدا", style);
+            setCell(row1.createCell(1), origin.getText(), style);
+
+            row1 = sheet1.createRow(1);
+            setCell(row1.createCell(0), "مقصد", style);
+            setCell(row1.createCell(1), destination.getText(), style);
+
+            row1 = sheet1.createRow(2);
+            setCell(row1.createCell(0), "x", style);
+            setCell(row1.createCell(1), "y", style);
+
+            int counter = 3;
+            for (MyCoordinate coordinate : data) {
+                row1 = sheet1.createRow(counter);
+                setCell(row1.createCell(0), (double) coordinate.x, style);
+                setCell(row1.createCell(1), (double) coordinate.y, style);
+                counter++;
+            }
+
             XSSFSheet sheet = workbook.createSheet("خروجی");
             sheet.setRightToLeft(true);
             XSSFRow row = sheet.createRow(0);
-
-            CellStyle style = setStyle(workbook, "B Zar", new Color(210, 202, 159));
 
             setCell(row.createCell(0), "مسیر", style);
             setCell(row.createCell(1), "تیب گاباری", style);
@@ -288,7 +353,8 @@ public class PrimaryController {
         }
     }
 
-    private void drawGabari(ArrayList<Coordinate[]> result, int gTipNumber, double outOfAllow, double outOfFree, Tab tab) {
+    private void drawGabari(ArrayList<Coordinate[]> result, int gTipNumber, double outOfAllow,
+                            double outOfFree, Tab tab) {
         FlowPane box = new FlowPane();
         box.setMinHeight(800);
         box.setHgap(100);
@@ -308,10 +374,10 @@ public class PrimaryController {
             header.add(new Label(gTip.getName()), 1, 0);
 
             header.add(new Label("بیرون زدگی از فضای آزاد"), 0, 1);
-            header.add(new Label(outOfAllow + " " + "سانتی متر"), 1, 1);
+            header.add(new Label(new DecimalFormat("##.00").format(outOfAllow) + " " + "سانتی متر"), 1, 1);
 
             header.add(new Label("بیرون زدگی از حد مجاز"), 0, 2);
-            header.add(new Label(outOfFree + " " + "سانتی متر"), 1, 2);
+            header.add(new Label(new DecimalFormat("##.00").format(outOfFree) + " " + "سانتی متر"), 1, 2);
 
             for (int j = 0; j < result.size(); j++) {
                 path = new Path();
@@ -319,8 +385,17 @@ public class PrimaryController {
                     path.getElements().add(new MoveTo(result.get(j)[0].x,
                             Math.abs(gTip.getMaxH() - result.get(j)[0].y)));
                     for (int i = 1; i < result.get(j).length; i++) {
-                        path.getElements().add(new LineTo(result.get(j)[i].x,
-                                Math.abs(gTip.getMaxH() - result.get(j)[i].y)));
+                        if (isDuplicate(result.get(j), i)) {
+                            path.getElements().add(new LineTo(result.get(j)[i].x,
+                                    Math.abs(gTip.getMaxH() - result.get(j)[i].y)));
+                            i++;
+                            if (i < result.get(j).length)
+                                path.getElements().add(new MoveTo(result.get(j)[i].x,
+                                        Math.abs(gTip.getMaxH() - result.get(j)[i].y)));
+                        } else {
+                            path.getElements().add(new LineTo(result.get(j)[i].x,
+                                    Math.abs(gTip.getMaxH() - result.get(j)[i].y)));
+                        }
                     }
                     if (j == 0)
                         path.setStroke(new javafx.scene.paint.Color(0, 1, 0, 1));
@@ -363,38 +438,95 @@ public class PrimaryController {
         tab.setContent(box);
     }
 
+    private boolean isDuplicate(Coordinate[] coordinates, int index) {
+        if (index == 0)
+            return false;
+        for (int i = 0; i <= index - 1; i++) {
+            if (coordinates[i].x == coordinates[index].x && coordinates[i].y == coordinates[index].y)
+                return true;
+        }
+        return false;
+    }
+
     public ArrayList<Coordinate[]> analyzeGabari(GTip gTip) {
         GeometryFactory fact = new GeometryFactory();
         WKTReader wktRdr = new WKTReader(fact);
 
-        float[][] cargoCoordinate = new float[data.size()][2];
+        float[][] cargoCoordinate = new float[realData.size()][2];
 
-        for (int i = 0; i < data.size(); i++) {
-            cargoCoordinate[i][0] = data.get(i).x;
-            cargoCoordinate[i][1] = data.get(i).y;
+        for (int i = 0; i < realData.size(); i++) {
+            cargoCoordinate[i][0] = realData.get(i).x;
+            cargoCoordinate[i][1] = realData.get(i).y;
         }
 
         Geometry cargo = createPolygon(cargoCoordinate, wktRdr);
         Geometry allowSpace = createPolygon(gTip.getAllowedSpace(), wktRdr);
         Geometry freeSpace = createPolygon(gTip.getFreeSpace(), wktRdr);
 
-        Coordinate[] cargo1 = cargo.intersection(allowSpace).getCoordinates();
-        Coordinate[] cargo2 = cargo.difference(allowSpace).getCoordinates();
-        Coordinate[] cargo3 = null;
+        Coordinate[] cargoXallowIn = cargo.intersection(allowSpace).getCoordinates();
+        Coordinate[] cargoXallowOut = cargo.difference(allowSpace).getCoordinates();
+        Coordinate[] cargoXfree = null;
         Coordinate[] cargo4 = null;
-        if (cargo2.length > 0) {
-            cargo3 = createPolygon(cargo2, wktRdr).difference(freeSpace).getCoordinates();
+
+        //first we should know how many sections cargoXallowOut has
+        ArrayList<ArrayList<Coordinate>> sectionsAllow = new ArrayList<>();
+        ArrayList<Coordinate> temp = new ArrayList<>();
+        for (Coordinate coordinate : cargoXallowOut) {
+            if (!temp.contains(coordinate)) {
+                temp.add(coordinate);
+            } else {
+                temp.add(coordinate);
+                sectionsAllow.add(temp);
+                temp = new ArrayList<>();
+            }
         }
 
-        if (cargo3.length > 0)
-            cargo4 = createPolygon(cargo2, wktRdr).intersection(freeSpace).getCoordinates();
-        else
-            cargo4 = cargo2;
+        ArrayList<Coordinate[]> sectionsFree = new ArrayList<>();
+        int allCoordinateSize = 0;
+        int counter = 0;
+        if (cargoXallowOut.length > 0) {
+            for (ArrayList<Coordinate> coordinates : sectionsAllow) {
+                sectionsFree.add(createPolygon(coordinates, wktRdr).difference(freeSpace).getCoordinates());
+                allCoordinateSize += sectionsFree.get(counter).length;
+                counter++;
+            }
+        }
+
+        //merging all section 2 coordinates
+        cargoXfree = new Coordinate[allCoordinateSize];
+        counter = 0;
+        for (Coordinate[] coordinates : sectionsFree) {
+            for (Coordinate coordinate : coordinates) {
+                cargoXfree[counter] = coordinate;
+                counter++;
+            }
+        }
+
+        ArrayList<Coordinate[]> sections = new ArrayList<>();
+        if (cargoXfree.length > 0) {
+            allCoordinateSize = 0;
+            counter = 0;
+            for (ArrayList<Coordinate> coordinates : sectionsAllow) {
+                sections.add(createPolygon(coordinates, wktRdr).intersection(freeSpace).getCoordinates());
+                allCoordinateSize += sections.get(counter).length;
+                counter++;
+            }
+            //merging all section 2 coordinates
+            cargo4 = new Coordinate[allCoordinateSize];
+            counter = 0;
+            for (Coordinate[] coordinates : sections) {
+                for (Coordinate coordinate : coordinates) {
+                    cargo4[counter] = coordinate;
+                    counter++;
+                }
+            }
+        } else
+            cargo4 = cargoXallowOut;
 
         ArrayList<Coordinate[]> result = new ArrayList<>();
-        result.add(cargo1);
+        result.add(cargoXallowIn);
         result.add(cargo4);
-        result.add(cargo3);
+        result.add(cargoXfree);
 
         return result;
     }
@@ -406,6 +538,23 @@ public class PrimaryController {
                 wktA.append(cordinates[i][0]).append(" ").append(cordinates[i][1]).append(", ");
             } else {
                 wktA.append(cordinates[i][0]).append(" ").append(cordinates[i][1]).append("))");
+            }
+        }
+        try {
+            return wktRdr.read(wktA.toString());
+        } catch (ParseException e) {
+            System.out.println(e.getMessage());
+            return null;
+        }
+    }
+
+    public Geometry createPolygon(ArrayList<Coordinate> cordinates, WKTReader wktRdr) {
+        StringBuilder wktA = new StringBuilder("POLYGON ((");
+        for (int i = 0; i < cordinates.size(); i++) {
+            if (i != cordinates.size() - 1) {
+                wktA.append(cordinates.get(i).x).append(" ").append(cordinates.get(i).y).append(", ");
+            } else {
+                wktA.append(cordinates.get(i).x).append(" ").append(cordinates.get(i).y).append("))");
             }
         }
         try {
@@ -516,5 +665,89 @@ public class PrimaryController {
             result = max(result, pointPairDistance.getDistance());
         }
         return result;
+    }
+
+    public void createDXF(ArrayList<Coordinate[]> result, int gTipNumber, String name) {
+        DXFDocument dxfDocument = new DXFDocument("Gabari");
+        DXFGraphics dxfGraphics = dxfDocument.getGraphics();
+        dxfGraphics.setStroke(new BasicStroke(3));
+
+        if (gTipNumber >= 0) {
+            GTip gTip = gTips.get(gTipNumber);
+            for (int j = 0; j < result.size(); j++) {
+                if (j == 0)
+                    dxfGraphics.setColor(Color.green);
+                if (j == 1)
+                    dxfGraphics.setColor(Color.yellow);
+                if (j == 2)
+                    dxfGraphics.setColor(Color.RED);
+
+                Coordinate[] gabari = result.get(j);
+                int temp;
+                for (int i = 0; i < gabari.length; i++) {
+                    if (i == gabari.length - 1)
+                        temp = 0;
+                    else
+                        temp = i + 1;
+
+                    dxfGraphics.drawLine(gabari[i].x, -gabari[i].y, gabari[temp].x, -gabari[temp].y);
+                }
+            }
+
+            dxfGraphics.setColor(Color.white);
+
+            int temp;
+            for (int i = 0; i < gTip.getAllowedSpace().length; i++) {
+                if (i == gTip.getAllowedSpace().length - 1)
+                    temp = 0;
+                else
+                    temp = i + 1;
+
+                dxfGraphics.drawLine(
+                        gTip.getAllowedSpace()[i][0],
+                        -gTip.getAllowedSpace()[i][1],
+                        gTip.getAllowedSpace()[temp][0],
+                        -gTip.getAllowedSpace()[temp][1]);
+            }
+
+            for (int i = 0; i < gTip.getFreeSpace().length; i++) {
+                if (i == gTip.getFreeSpace().length - 1)
+                    temp = 0;
+                else
+                    temp = i + 1;
+
+                dxfGraphics.drawLine(
+                        gTip.getFreeSpace()[i][0],
+                        -gTip.getFreeSpace()[i][1],
+                        gTip.getFreeSpace()[temp][0],
+                        -gTip.getFreeSpace()[temp][1]);
+            }
+
+        }
+
+        String dxfText = dxfDocument.toDXFString();
+        String filePath = outputDXFLocation + name + ".dxf";
+        try {
+            FileWriter fileWriter = new FileWriter(filePath);
+            fileWriter.write(dxfText);
+            fileWriter.flush();
+            fileWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void changeToXY() {
+        for (int i = 0; i < data.size(); i++) {
+            realData.add(new MyCoordinate((GTip.maxW / 2) - (data.get(i).x / 2),
+                    data.get(i).y)
+            );
+        }
+        for (int i = data.size() - 1; i >= 0; i--) {
+            realData.add(new MyCoordinate((GTip.maxW / 2) + (data.get(i).x / 2),
+                    data.get(i).y)
+            );
+        }
+        realData.add(new MyCoordinate((GTip.maxW / 2) - (data.get(0).x / 2), data.get(0).y));
     }
 }

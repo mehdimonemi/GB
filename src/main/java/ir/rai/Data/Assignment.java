@@ -472,8 +472,6 @@ public class Assignment {
             for (int sheetIndex = 0; sheetIndex < workbook.getNumberOfSheets(); sheetIndex++) {
                 GTip gTip = new GTip();
                 XSSFSheet sheet = workbook.getSheetAt(sheetIndex);
-                gTip.setMaxH((int) sheet.getRow(1).getCell(0).getNumericCellValue() / 10);
-                gTip.setMaxW((int) sheet.getRow(1).getCell(1).getNumericCellValue() / 10);
                 gTip.setName(sheet.getRow(1).getCell(2).getStringCellValue());
 
                 XSSFRow row;

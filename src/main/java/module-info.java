@@ -4,6 +4,9 @@ module ir.rai {
     requires javafx.graphics;
     requires poi;
     requires poi.ooxml;
+    requires jdxf;
+    requires org.jfree.chart.fx;
+    requires org.jfree.jfreechart;
     requires org.jfxtras.styles.jmetro;
     requires org.locationtech.jts;
     requires cplex;
