@@ -11,6 +11,7 @@ module ir.rai {
     requires org.locationtech.jts;
     requires cplex;
     requires java.desktop;
+    requires org.jfree.fxgraphics2d;
 
     opens ir.rai to javafx.fxml;
 

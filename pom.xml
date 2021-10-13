@@ -64,6 +64,11 @@
             <artifactId>cplex</artifactId>
             <version>12.62</version>
         </dependency>
+        <dependency>
+            <groupId>JDXF</groupId>
+            <artifactId>JDXF</artifactId>
+            <version>1.5.1</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -93,3 +98,5 @@
         </plugins>
     </build>
 </project>
+
+

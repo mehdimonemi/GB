@@ -14,6 +14,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.NodeOrientation;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -24,14 +25,15 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
-import javafx.scene.shape.LineTo;
-import javafx.scene.shape.MoveTo;
-import javafx.scene.shape.Path;
 import javafx.util.Callback;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.jfree.chart.fx.ChartViewer;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.data.xy.XYSeries;
+import org.jfree.data.xy.XYSeriesCollection;
 import org.locationtech.jts.algorithm.distance.DistanceToPoint;
 import org.locationtech.jts.algorithm.distance.PointPairDistance;
 import org.locationtech.jts.geom.Coordinate;
@@ -91,13 +93,16 @@ public class PrimaryController {
         checkOutputFile(outputFileLocation);
         configureTable();
 
-        FlowPane box = new FlowPane();
-        GridPane header = new GridPane();
-        StackPane pane = new StackPane();
-        header.add(new Label("نوع گاباری"), 0, 0);
-        pane.getChildren().add(new Chart(data));
-        box.getChildren().addAll(header, pane);
-        defaultTab.setContent(box);
+//        StackPane box = new StackPane();
+//        box.setMinWidth(500);
+//        box.setMinHeight(500);
+//        GridPane header = new GridPane();
+//        header.add(new Label("نوع گاباری"), 0, 0);
+//
+////        Chart chart = new Chart(data);
+//
+////        box.getChildren().addAll(header, chart.chartViewer);
+//        defaultTab.setContent(box);
     }
 
     private void configureTable() {
@@ -355,19 +360,21 @@ public class PrimaryController {
 
     private void drawGabari(ArrayList<Coordinate[]> result, int gTipNumber, double outOfAllow,
                             double outOfFree, Tab tab) {
-        FlowPane box = new FlowPane();
-        box.setMinHeight(800);
-        box.setHgap(100);
-        box.setPadding(new Insets(10, 10, 10, 10));
+        VBox parent = new VBox();
+        HBox chartContainer = new HBox();
+        int containerHeight = 600;
+        chartContainer.setMinHeight(containerHeight);
+        chartContainer.setMinWidth(containerHeight / 1.125);
+        chartContainer.setPadding(new Insets(10, 10, 10, 10));
         GridPane header = new GridPane();
         header.setHgap(20);
         header.setVgap(5);
         header.setNodeOrientation(NodeOrientation.RIGHT_TO_LEFT);
         header.setPadding(new Insets(0, 0, 10, 10));
-        Pane pane = new Pane();
+        header.setAlignment(Pos.CENTER);
+        Node chartCanvas = null;
 
         if (gTipNumber >= 0) {
-            Path path = null;
             GTip gTip = gTips.get(gTipNumber);
 
             header.add(new Label("نوع گاباری"), 0, 0);
@@ -379,63 +386,80 @@ public class PrimaryController {
             header.add(new Label("بیرون زدگی از حد مجاز"), 0, 2);
             header.add(new Label(new DecimalFormat("##.00").format(outOfFree) + " " + "سانتی متر"), 1, 2);
 
+            XYSeriesCollection dataset = new XYSeriesCollection();
+            final XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
+            renderer.setDefaultShapesVisible(false);
+            renderer.setDefaultStroke(new BasicStroke(4));
+
             for (int j = 0; j < result.size(); j++) {
-                path = new Path();
                 if (result.get(j).length > 0) {
-                    path.getElements().add(new MoveTo(result.get(j)[0].x,
-                            Math.abs(gTip.getMaxH() - result.get(j)[0].y)));
-                    for (int i = 1; i < result.get(j).length; i++) {
+                    XYSeries series = new XYSeries("Bar: part " + j + 1, false, true);
+                    for (int i = 0; i < result.get(j).length; i++) {
                         if (isDuplicate(result.get(j), i)) {
-                            path.getElements().add(new LineTo(result.get(j)[i].x,
-                                    Math.abs(gTip.getMaxH() - result.get(j)[i].y)));
+                            series.add(result.get(j)[i].x, result.get(j)[i].y);
+                            dataset.addSeries(series);
                             i++;
-                            if (i < result.get(j).length)
-                                path.getElements().add(new MoveTo(result.get(j)[i].x,
-                                        Math.abs(gTip.getMaxH() - result.get(j)[i].y)));
+                            series = new XYSeries("Bar: part " + j + 1, false, true);
                         } else {
-                            path.getElements().add(new LineTo(result.get(j)[i].x,
-                                    Math.abs(gTip.getMaxH() - result.get(j)[i].y)));
+                            series.add(result.get(j)[i].x, result.get(j)[i].y);
                         }
                     }
-                    if (j == 0)
-                        path.setStroke(new javafx.scene.paint.Color(0, 1, 0, 1));
-                    if (j == 1)
-                        path.setStroke(new javafx.scene.paint.Color(1, 0.8, 0, 1));
-                    if (j == 2)
-                        path.setStroke(new javafx.scene.paint.Color(1, 0, 0, 1));
-
-                    path.setStrokeWidth(2);
-                    pane.getChildren().add(path);
                 }
             }
 
-            path = new Path();
-            path.getElements().add(new MoveTo(gTip.getAllowedSpace()[0][0],
-                    Math.abs(gTip.getMaxH() - gTip.getAllowedSpace()[0][1])));
-            for (int i = 1; i < gTip.getAllowedSpace().length; i++) {
-                path.getElements().add(new LineTo(gTip.getAllowedSpace()[i][0],
-                        Math.abs(gTip.getMaxH() - gTip.getAllowedSpace()[i][1])));
+            XYSeries series = new XYSeries("Allow", false, true);
+            for (int i = 0; i < gTip.getAllowedSpace().length; i++) {
+                series.add(gTip.getAllowedSpace()[i][0], gTip.getAllowedSpace()[i][1]);
             }
-            path.setStrokeWidth(2);
-            pane.getChildren().add(path);
+            dataset.addSeries(series);
 
-            path = new Path();
-            path.getElements().add(new MoveTo(gTip.getFreeSpace()[0][0],
-                    Math.abs(gTip.getMaxH() - gTip.getFreeSpace()[0][1])));
-            for (int i = 1; i < gTip.getFreeSpace().length; i++) {
-                path.getElements().add(new LineTo(gTip.getFreeSpace()[i][0],
-                        Math.abs(gTip.getMaxH() - gTip.getFreeSpace()[i][1])));
+            series = new XYSeries("Free", false, true);
+            for (int i = 0; i < gTip.getFreeSpace().length; i++) {
+                series.add(gTip.getFreeSpace()[i][0], gTip.getFreeSpace()[i][1]);
             }
-            path.setStrokeWidth(2);
-            AnchorPane.setLeftAnchor(pane, 50.0);
+            dataset.addSeries(series);
+            switch (dataset.getSeriesCount()) {
+                case 3: {
+                    renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
+                    renderer.setSeriesPaint(1, new Color(0, 0, 0, 255));
+                    renderer.setSeriesPaint(2, new Color(0, 0, 0, 255));
+                    break;
+                }
+                case 4: {
+                    renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
+                    renderer.setSeriesPaint(1, new Color(255, 200, 0, 255));
+                    renderer.setSeriesPaint(2, new Color(0, 0, 0, 255));
+                    renderer.setSeriesPaint(3, new Color(0, 0, 0, 255));
+                    break;
+                }
+                case 5: {
+                    renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
+                    renderer.setSeriesPaint(1, new Color(255, 200, 0, 255));
+                    renderer.setSeriesPaint(2, new Color(255, 0, 0, 255));
+                    renderer.setSeriesPaint(3, new Color(0, 0, 0, 255));
+                    renderer.setSeriesPaint(4, new Color(0, 0, 0, 255));
+                    break;
+                }
+            }
 
-            pane.getChildren().addAll(path);
+            Chart chart = new Chart(dataset, renderer);
+            chartCanvas = useWorkaround(chart.chartViewer);
+            AnchorPane.setLeftAnchor(chartCanvas, 50.0);
         } else {
-            pane.getChildren().add(new Label("گاباری این بخش مسیر ناشناخته است"));
+            header.add(new Label("گاباری این بخش مسیر ناشناخته است"), 0, 0);
         }
-        box.setAlignment(Pos.TOP_CENTER);
-        box.getChildren().addAll(header, pane);
-        tab.setContent(box);
+        HBox.setHgrow(chartCanvas, Priority.ALWAYS);
+        chartContainer.getChildren().addAll(chartCanvas);
+        chartContainer.setAlignment(Pos.CENTER);
+        parent.getChildren().addAll(header, chartContainer);
+        tab.setContent(parent);
+    }
+
+    private Node useWorkaround(ChartViewer chartViewer) {
+        if (true) {
+            return new StackPane(chartViewer);
+        }
+        return chartViewer;
     }
 
     private boolean isDuplicate(Coordinate[] coordinates, int index) {
@@ -739,15 +763,14 @@ public class PrimaryController {
 
     private void changeToXY() {
         for (int i = 0; i < data.size(); i++) {
-            realData.add(new MyCoordinate((GTip.maxW / 2) - (data.get(i).x / 2),
-                    data.get(i).y)
+            realData.add(new MyCoordinate(-(data.get(i).x / 2), data.get(i).y)
             );
         }
         for (int i = data.size() - 1; i >= 0; i--) {
-            realData.add(new MyCoordinate((GTip.maxW / 2) + (data.get(i).x / 2),
-                    data.get(i).y)
+            realData.add(new MyCoordinate((data.get(i).x / 2), data.get(i).y)
             );
         }
-        realData.add(new MyCoordinate((GTip.maxW / 2) - (data.get(0).x / 2), data.get(0).y));
+        realData.add(new MyCoordinate(-(data.get(0).x / 2), data.get(0).y));
     }
+
 }

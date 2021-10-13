@@ -8,10 +8,7 @@
 <?import javafx.scene.Group?>
 <VBox stylesheets="@primary.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="ir.rai.PrimaryController">
-    <ToolBar>
-        <Button fx:id="menu" onAction="#calculate" text="Calculate"/>
-    </ToolBar>
-    <SplitPane fx:id="hBox" orientation="HORIZONTAL">
+    <SplitPane fx:id="hBox" orientation="HORIZONTAL" dividerPositions="0.6">
         <Pane fx:id="pane">
             <TabPane fx:id="tabPane" side="LEFT" rotateGraphic="true">
                 <Tab fx:id="defaultTab" closable="false">
@@ -40,6 +37,7 @@
                 <TextField fx:id="add1Para"/>
                 <TextField fx:id="add2Para"/>
             </HBox>
+            <Button fx:id="menu" onAction="#calculate" text="Calculate"/>
         </VBox>
     </SplitPane>
 </VBox>
