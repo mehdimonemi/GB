@@ -4,6 +4,7 @@ import com.jsevy.jdxf.DXFDocument;
 import com.jsevy.jdxf.DXFGraphics;
 import ir.rai.Data.Assignment;
 import ir.rai.Data.Chart;
+import ir.rai.Data.Corridor;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -39,7 +40,6 @@ import org.locationtech.jts.algorithm.distance.PointPairDistance;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 
 import java.awt.*;
@@ -50,8 +50,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static ir.rai.Data.Assignment.gTips;
-import static ir.rai.Data.ExcelUtility.setCell;
-import static ir.rai.Data.ExcelUtility.setStyle;
+import static ir.rai.Data.ExcelUtility.*;
 import static java.lang.Math.max;
 import static jfxtras.styles.jmetro.JMetroStyleClass.*;
 
@@ -69,7 +68,7 @@ public class PrimaryController {
     TextField add1Para, add2Para, origin, destination;
 
     @FXML
-    ComboBox<String> coordinationBox;
+    ComboBox<String> coordinationBox, corridors;
 
     @FXML
     TableView<MyCoordinate> table;
@@ -83,6 +82,8 @@ public class PrimaryController {
                     new MyCoordinate(410f, 450f),
                     new MyCoordinate(10f, 450f)
             );
+
+    public static ArrayList<Corridor> specialCorridors = new ArrayList<>();
 
     String outputFileLocation = "./output/output.xlsx";
     String outputDXFLocation = "./output/";
@@ -173,6 +174,10 @@ public class PrimaryController {
         coordinationBox.setValue("XY Coordination");
         coordinationBox.valueProperty().addListener(observable -> coordinationBox.getValue());
 
+        for (Corridor corridor: specialCorridors) {
+            corridors.getItems().add(corridor.toString());
+        }
+        corridors.valueProperty().addListener(observable -> corridors.getValue());
         addButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
@@ -192,7 +197,7 @@ public class PrimaryController {
         }
 
         LinkedHashMap<String, Integer> gabariResult =
-                new LinkedHashMap<>(assignment.main(origin.getText(), destination.getText()));
+                new LinkedHashMap<>(assignment.main(origin.getText(), destination.getText(), corridors.getValue()));
 
         while (tabPane.getTabs().size() > 0) {
             tabPane.getTabs().remove(0);
@@ -208,13 +213,20 @@ public class PrimaryController {
 
             Label label = new Label(pair.getKey().toString());
             label.setRotate(90);
-            ArrayList<Coordinate[]> transportable = null;
+            ArrayList<Coordinate[]> transportable = new ArrayList<>();
             tab.setGraphic(new Group(label));
 
             double outOfAllow = 0;
             double outOfFree = 0;
             if ((Integer) pair.getValue() >= 1) {
                 transportable = analyzeGabari(gTips.get((Integer) pair.getValue() - 1));
+
+                //check whether we have a result from the analyze
+                if (transportable.size() == 0) {
+                    drawGabari(transportable, ((Integer) pair.getValue() - 1), outOfAllow, outOfFree, tab);
+                    tabPane.getTabs().add(tab);
+                    continue;
+                }
                 outOfAllow = transportable.get(1).length > 0 ?
                         computeOutOfGabari(gTips.get((Integer) pair.getValue() - 1).getAllowedSpace(), transportable.get(1)) :
                         0;
@@ -256,51 +268,6 @@ public class PrimaryController {
             }
         } catch (IOException e) {
             System.out.println("There is no Output File, or the file has a problem");
-        }
-    }
-
-    private void addToExcel(String outputFileLocation, int rowNumber,
-                            ArrayList<Coordinate[]> transportable, double outOfAllow,
-                            double outOffree, int gTipNumber, String OD) {
-        FileOutputStream outFile;
-
-        try (
-                FileInputStream inFile = new FileInputStream(outputFileLocation);
-                XSSFWorkbook workbook = new XSSFWorkbook(inFile);
-        ) {
-            XSSFSheet sheet = workbook.getSheet("خروجی");
-            XSSFRow row = sheet.createRow(rowNumber);
-
-            Color color;
-            if (rowNumber / 2.0 == 0) {
-                color = new Color(90, 178, 198);
-            } else
-                color = new Color(255, 255, 255, 255);
-
-            CellStyle style = setStyle(workbook, "B Zar", color);
-
-            setCell(row.createCell(0), OD, style);
-            if (gTipNumber >= 0) {
-                GTip gTip = gTips.get(gTipNumber);
-                setCell(row.createCell(1), gTip.getName(), style);
-                setCell(row.createCell(2), transportable.get(1).length == 0 ? "قابل عبور" : "غیر قابل عبور", style);
-                setCell(row.createCell(3), outOfAllow, style);
-                setCell(row.createCell(4), transportable.get(2).length == 0 ? "قابل عبور" : "غیر قابل عبور", style);
-                setCell(row.createCell(5), outOffree, style);
-            } else {
-                setCell(row.createCell(1), "نامشخص", style);
-                setCell(row.createCell(2), "", style);
-                setCell(row.createCell(3), "", style);
-                setCell(row.createCell(4), "", style);
-                setCell(row.createCell(5), "", style);
-            }
-
-
-            outFile = new FileOutputStream(outputFileLocation);
-            workbook.write(outFile);
-
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
@@ -361,6 +328,7 @@ public class PrimaryController {
     private void drawGabari(ArrayList<Coordinate[]> result, int gTipNumber, double outOfAllow,
                             double outOfFree, Tab tab) {
         VBox parent = new VBox();
+        parent.setAlignment(Pos.CENTER);
         HBox chartContainer = new HBox();
         int containerHeight = 600;
         chartContainer.setMinHeight(containerHeight);
@@ -374,84 +342,100 @@ public class PrimaryController {
         header.setAlignment(Pos.CENTER);
         Node chartCanvas = null;
 
+        Boolean haveCanvas = true;
+
         if (gTipNumber >= 0) {
-            GTip gTip = gTips.get(gTipNumber);
+            if (result.size() == 0) {
+                header.add(new Label("مشکل در مشخصات وارد شده بار"), 0, 0);
+                haveCanvas = false;
+            } else {
+                GTip gTip = gTips.get(gTipNumber);
+                XYSeriesCollection dataset = new XYSeriesCollection();
+                final XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
+                renderer.setDefaultShapesVisible(false);
+                renderer.setDefaultStroke(new BasicStroke(4));
 
-            header.add(new Label("نوع گاباری"), 0, 0);
-            header.add(new Label(gTip.getName()), 1, 0);
 
-            header.add(new Label("بیرون زدگی از فضای آزاد"), 0, 1);
-            header.add(new Label(new DecimalFormat("##.00").format(outOfAllow) + " " + "سانتی متر"), 1, 1);
+                header.add(new Label("نوع گاباری"), 0, 0);
+                header.add(new Label(gTip.getName()), 1, 0);
 
-            header.add(new Label("بیرون زدگی از حد مجاز"), 0, 2);
-            header.add(new Label(new DecimalFormat("##.00").format(outOfFree) + " " + "سانتی متر"), 1, 2);
+                header.add(new Label("بیرون زدگی از فضای آزاد"), 0, 1);
+                header.add(new Label(new DecimalFormat("##.00").format(outOfAllow) + " " + "سانتی متر"), 1, 1);
 
-            XYSeriesCollection dataset = new XYSeriesCollection();
-            final XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
-            renderer.setDefaultShapesVisible(false);
-            renderer.setDefaultStroke(new BasicStroke(4));
+                header.add(new Label("بیرون زدگی از حد مجاز"), 0, 2);
+                header.add(new Label(new DecimalFormat("##.00").format(outOfFree) + " " + "سانتی متر"), 1, 2);
 
-            for (int j = 0; j < result.size(); j++) {
-                if (result.get(j).length > 0) {
-                    XYSeries series = new XYSeries("Bar: part " + j + 1, false, true);
-                    for (int i = 0; i < result.get(j).length; i++) {
-                        if (isDuplicate(result.get(j), i)) {
-                            series.add(result.get(j)[i].x, result.get(j)[i].y);
-                            dataset.addSeries(series);
-                            i++;
-                            series = new XYSeries("Bar: part " + j + 1, false, true);
-                        } else {
-                            series.add(result.get(j)[i].x, result.get(j)[i].y);
+                for (int j = 0; j < result.size(); j++) {
+                    if (result.get(j).length > 0) {
+                        XYSeries series = new XYSeries("Bar: part " + j + 1, false, true);
+                        for (int i = 0; i < result.get(j).length; i++) {
+                            if (isDuplicate(result.get(j), i)) {
+                                series.add(result.get(j)[i].x, result.get(j)[i].y);
+                                dataset.addSeries(series);
+                                i++;
+                                series = new XYSeries("Bar: part " + j + 1, false, true);
+                            } else {
+                                series.add(result.get(j)[i].x, result.get(j)[i].y);
+                            }
                         }
                     }
                 }
-            }
 
-            XYSeries series = new XYSeries("Allow", false, true);
-            for (int i = 0; i < gTip.getAllowedSpace().length; i++) {
-                series.add(gTip.getAllowedSpace()[i][0], gTip.getAllowedSpace()[i][1]);
-            }
-            dataset.addSeries(series);
+                XYSeries series = new XYSeries("Allow", false, true);
+                for (int i = 0; i < gTip.getAllowedSpace().length; i++) {
+                    series.add(gTip.getAllowedSpace()[i][0], gTip.getAllowedSpace()[i][1]);
+                }
+                dataset.addSeries(series);
 
-            series = new XYSeries("Free", false, true);
-            for (int i = 0; i < gTip.getFreeSpace().length; i++) {
-                series.add(gTip.getFreeSpace()[i][0], gTip.getFreeSpace()[i][1]);
+                series = new XYSeries("Free", false, true);
+                for (int i = 0; i < gTip.getFreeSpace().length; i++) {
+                    series.add(gTip.getFreeSpace()[i][0], gTip.getFreeSpace()[i][1]);
+                }
+                dataset.addSeries(series);
+                switch (dataset.getSeriesCount()) {
+                    case 2: {
+                        renderer.setSeriesPaint(0, new Color(0, 0, 0, 255));
+                        renderer.setSeriesPaint(1, new Color(0, 0, 0, 255));
+                        break;
+                    }
+                    case 3: {
+                        renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
+                        renderer.setSeriesPaint(1, new Color(0, 0, 0, 255));
+                        renderer.setSeriesPaint(2, new Color(0, 0, 0, 255));
+                        break;
+                    }
+                    case 4: {
+                        renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
+                        renderer.setSeriesPaint(1, new Color(255, 200, 0, 255));
+                        renderer.setSeriesPaint(2, new Color(0, 0, 0, 255));
+                        renderer.setSeriesPaint(3, new Color(0, 0, 0, 255));
+                        break;
+                    }
+                    case 5: {
+                        renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
+                        renderer.setSeriesPaint(1, new Color(255, 200, 0, 255));
+                        renderer.setSeriesPaint(2, new Color(255, 0, 0, 255));
+                        renderer.setSeriesPaint(3, new Color(0, 0, 0, 255));
+                        renderer.setSeriesPaint(4, new Color(0, 0, 0, 255));
+                        break;
+                    }
+                }
+                Chart chart = new Chart(dataset, renderer);
+                chartCanvas = useWorkaround(chart.chartViewer);
+                AnchorPane.setLeftAnchor(chartCanvas, 50.0);
             }
-            dataset.addSeries(series);
-            switch (dataset.getSeriesCount()) {
-                case 3: {
-                    renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
-                    renderer.setSeriesPaint(1, new Color(0, 0, 0, 255));
-                    renderer.setSeriesPaint(2, new Color(0, 0, 0, 255));
-                    break;
-                }
-                case 4: {
-                    renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
-                    renderer.setSeriesPaint(1, new Color(255, 200, 0, 255));
-                    renderer.setSeriesPaint(2, new Color(0, 0, 0, 255));
-                    renderer.setSeriesPaint(3, new Color(0, 0, 0, 255));
-                    break;
-                }
-                case 5: {
-                    renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
-                    renderer.setSeriesPaint(1, new Color(255, 200, 0, 255));
-                    renderer.setSeriesPaint(2, new Color(255, 0, 0, 255));
-                    renderer.setSeriesPaint(3, new Color(0, 0, 0, 255));
-                    renderer.setSeriesPaint(4, new Color(0, 0, 0, 255));
-                    break;
-                }
-            }
-
-            Chart chart = new Chart(dataset, renderer);
-            chartCanvas = useWorkaround(chart.chartViewer);
-            AnchorPane.setLeftAnchor(chartCanvas, 50.0);
         } else {
             header.add(new Label("گاباری این بخش مسیر ناشناخته است"), 0, 0);
+            haveCanvas = false;
         }
-        HBox.setHgrow(chartCanvas, Priority.ALWAYS);
-        chartContainer.getChildren().addAll(chartCanvas);
-        chartContainer.setAlignment(Pos.CENTER);
-        parent.getChildren().addAll(header, chartContainer);
+        if (haveCanvas) {
+            HBox.setHgrow(chartCanvas, Priority.ALWAYS);
+            chartContainer.getChildren().addAll(chartCanvas);
+            chartContainer.setAlignment(Pos.CENTER);
+            parent.getChildren().addAll(header, chartContainer);
+        } else {
+            parent.getChildren().addAll(header);
+        }
         tab.setContent(parent);
     }
 
@@ -475,87 +459,92 @@ public class PrimaryController {
     public ArrayList<Coordinate[]> analyzeGabari(GTip gTip) {
         GeometryFactory fact = new GeometryFactory();
         WKTReader wktRdr = new WKTReader(fact);
+        ArrayList<Coordinate[]> result = new ArrayList<>();
 
-        float[][] cargoCoordinate = new float[realData.size()][2];
+        try {
+            float[][] cargoCoordinate = new float[realData.size()][2];
 
-        for (int i = 0; i < realData.size(); i++) {
-            cargoCoordinate[i][0] = realData.get(i).x;
-            cargoCoordinate[i][1] = realData.get(i).y;
-        }
-
-        Geometry cargo = createPolygon(cargoCoordinate, wktRdr);
-        Geometry allowSpace = createPolygon(gTip.getAllowedSpace(), wktRdr);
-        Geometry freeSpace = createPolygon(gTip.getFreeSpace(), wktRdr);
-
-        Coordinate[] cargoXallowIn = cargo.intersection(allowSpace).getCoordinates();
-        Coordinate[] cargoXallowOut = cargo.difference(allowSpace).getCoordinates();
-        Coordinate[] cargoXfree = null;
-        Coordinate[] cargo4 = null;
-
-        //first we should know how many sections cargoXallowOut has
-        ArrayList<ArrayList<Coordinate>> sectionsAllow = new ArrayList<>();
-        ArrayList<Coordinate> temp = new ArrayList<>();
-        for (Coordinate coordinate : cargoXallowOut) {
-            if (!temp.contains(coordinate)) {
-                temp.add(coordinate);
-            } else {
-                temp.add(coordinate);
-                sectionsAllow.add(temp);
-                temp = new ArrayList<>();
+            for (int i = 0; i < realData.size(); i++) {
+                cargoCoordinate[i][0] = realData.get(i).x;
+                cargoCoordinate[i][1] = realData.get(i).y;
             }
-        }
 
-        ArrayList<Coordinate[]> sectionsFree = new ArrayList<>();
-        int allCoordinateSize = 0;
-        int counter = 0;
-        if (cargoXallowOut.length > 0) {
-            for (ArrayList<Coordinate> coordinates : sectionsAllow) {
-                sectionsFree.add(createPolygon(coordinates, wktRdr).difference(freeSpace).getCoordinates());
-                allCoordinateSize += sectionsFree.get(counter).length;
-                counter++;
-            }
-        }
+            Geometry cargo = createPolygon(cargoCoordinate, wktRdr);
+            Geometry allowSpace = createPolygon(gTip.getAllowedSpace(), wktRdr);
+            Geometry freeSpace = createPolygon(gTip.getFreeSpace(), wktRdr);
 
-        //merging all section 2 coordinates
-        cargoXfree = new Coordinate[allCoordinateSize];
-        counter = 0;
-        for (Coordinate[] coordinates : sectionsFree) {
-            for (Coordinate coordinate : coordinates) {
-                cargoXfree[counter] = coordinate;
-                counter++;
-            }
-        }
+            Coordinate[] cargoXallowIn = cargo.intersection(allowSpace).getCoordinates();
+            Coordinate[] cargoXallowOut = cargo.difference(allowSpace).getCoordinates();
+            Coordinate[] cargoXfree = null;
+            Coordinate[] cargo4 = null;
 
-        ArrayList<Coordinate[]> sections = new ArrayList<>();
-        if (cargoXfree.length > 0) {
-            allCoordinateSize = 0;
-            counter = 0;
-            for (ArrayList<Coordinate> coordinates : sectionsAllow) {
-                sections.add(createPolygon(coordinates, wktRdr).intersection(freeSpace).getCoordinates());
-                allCoordinateSize += sections.get(counter).length;
-                counter++;
+            //first we should know how many sections cargoXallowOut has
+            ArrayList<ArrayList<Coordinate>> sectionsAllow = new ArrayList<>();
+            ArrayList<Coordinate> temp = new ArrayList<>();
+            for (Coordinate coordinate : cargoXallowOut) {
+                if (!temp.contains(coordinate)) {
+                    temp.add(coordinate);
+                } else {
+                    temp.add(coordinate);
+                    sectionsAllow.add(temp);
+                    temp = new ArrayList<>();
+                }
             }
-            //merging all section 2 coordinates
-            cargo4 = new Coordinate[allCoordinateSize];
-            counter = 0;
-            for (Coordinate[] coordinates : sections) {
-                for (Coordinate coordinate : coordinates) {
-                    cargo4[counter] = coordinate;
+
+            ArrayList<Coordinate[]> sectionsFree = new ArrayList<>();
+            int allCoordinateSize = 0;
+            int counter = 0;
+            if (cargoXallowOut.length > 0) {
+                for (ArrayList<Coordinate> coordinates : sectionsAllow) {
+                    sectionsFree.add(createPolygon(coordinates, wktRdr).difference(freeSpace).getCoordinates());
+                    allCoordinateSize += sectionsFree.get(counter).length;
                     counter++;
                 }
             }
-        } else
-            cargo4 = cargoXallowOut;
 
-        ArrayList<Coordinate[]> result = new ArrayList<>();
-        result.add(cargoXallowIn);
-        result.add(cargo4);
-        result.add(cargoXfree);
+            //merging all section 2 coordinates
+            cargoXfree = new Coordinate[allCoordinateSize];
+            counter = 0;
+            for (Coordinate[] coordinates : sectionsFree) {
+                for (Coordinate coordinate : coordinates) {
+                    cargoXfree[counter] = coordinate;
+                    counter++;
+                }
+            }
 
-        return result;
+            ArrayList<Coordinate[]> sections = new ArrayList<>();
+            if (cargoXfree.length > 0) {
+                allCoordinateSize = 0;
+                counter = 0;
+                for (ArrayList<Coordinate> coordinates : sectionsAllow) {
+                    sections.add(createPolygon(coordinates, wktRdr).intersection(freeSpace).getCoordinates());
+                    allCoordinateSize += sections.get(counter).length;
+                    counter++;
+                }
+                //merging all section 2 coordinates
+                cargo4 = new Coordinate[allCoordinateSize];
+                counter = 0;
+                for (Coordinate[] coordinates : sections) {
+                    for (Coordinate coordinate : coordinates) {
+                        cargo4[counter] = coordinate;
+                        counter++;
+                    }
+                }
+            } else
+                cargo4 = cargoXallowOut;
+
+            result.add(cargoXallowIn);
+            result.add(cargo4);
+            result.add(cargoXfree);
+            return result;
+        } catch (Exception e) {
+            //returns empty list on errors
+            return new ArrayList<>();
+        }
     }
 
     public Geometry createPolygon(float[][] cordinates, WKTReader wktRdr) {
+        Geometry result = null;
         StringBuilder wktA = new StringBuilder("POLYGON ((");
         for (int i = 0; i < cordinates.length; i++) {
             if (i != cordinates.length - 1) {
@@ -565,9 +554,9 @@ public class PrimaryController {
             }
         }
         try {
-            return wktRdr.read(wktA.toString());
-        } catch (ParseException e) {
-            System.out.println(e.getMessage());
+            result = wktRdr.read(wktA.toString());
+            return result;
+        } catch (Exception e) {
             return null;
         }
     }
@@ -583,8 +572,7 @@ public class PrimaryController {
         }
         try {
             return wktRdr.read(wktA.toString());
-        } catch (ParseException e) {
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
             return null;
         }
     }
@@ -600,8 +588,7 @@ public class PrimaryController {
         }
         try {
             return wktRdr.read(wktA.toString());
-        } catch (ParseException e) {
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
             return null;
         }
     }

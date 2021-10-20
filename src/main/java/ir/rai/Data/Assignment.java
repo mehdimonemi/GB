@@ -15,6 +15,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.*;
 import java.util.*;
 
+import static ir.rai.PrimaryController.specialCorridors;
+
 public class Assignment {
     public static XSSFRow row;
 
@@ -22,7 +24,6 @@ public class Assignment {
     public ArrayList<Block> blocks = null;
     public ArrayList<Block> outputBlocks = null;
     Commodity commodity = null;
-    public PathExceptions pathExceptions = null;
     public TreeSet<String> districts = null;
     public HashSet<String> wagons = null;
     public HashSet<String> mainCargoTypes = null;
@@ -38,101 +39,77 @@ public class Assignment {
         readGabari("./gabari.xlsx");
     }
 
-    public LinkedHashMap<String, Integer> main(String origin, String destination) {
+    public LinkedHashMap<String, Integer> main(String origin, String destination, String specialCorridor) {
         commodity = new Commodity(origin, destination, stations);
+        Commodity commodity1 = new Commodity(origin, destination, stations);
+        Commodity commodity2 = new Commodity(origin, destination, stations);
         resetCommoditiesResult();
-        return findPaths(commodity);
-    }
-
-    void resetCommoditiesResult() {
-        commodity.setHowMuchIsAllowed(1);
-        commodity.setDistance(0);
-        commodity.setTonKilometer(0);
-        commodity.setBlocks(new ArrayList<>());
-
-        for (Block block : blocks) {
-            block.setDemandWentPlanTon(0);
-            block.setDemandWentOperationTon(0);
-            block.setDemandWentPlanWagon(0);
-            block.setDemandWentOperatoinWagon(0);
-            block.setDemandBackPlanTon(0);
-            block.setDemandBackOperationTon(0);
-            block.setDemandBackPlanWagon(0);
-            block.setDemandBackOperationWagon(0);
-            block.setDemandWentPlanTonKilometer(0);
-            block.setDemandBackPlanTonKilometer(0);
-            block.setAverageMovingDistance(0);
-        }
-    }
-
-    public LinkedHashMap<String, Integer> findPaths(Commodity commodity) {
         LinkedHashMap<String, Integer> gabariResult = null;
         try {
             IloCplex model = new IloCplex();
-            int stationA = commodity.getOriginId();
-            int stationB = commodity.getDestinationId();
-            String a = commodity.getOrigin();
-            String b = commodity.getDestination();
+            ArrayList<Block> specialBlocks1 = new ArrayList<>();
+            ArrayList<Block> specialBlocks2 = new ArrayList<>();
+            for (Corridor corridor : specialCorridors) {
+                if (corridor.toString().equals(specialCorridor)) {
+                    Commodity path1 = new Commodity(corridor.getOrigin(), corridor.getDestination(), stations);
+                    Commodity path2 = new Commodity(corridor.getDestination(), corridor.getOrigin(), stations);
+                    specialBlocks1.addAll(findBlocks(blocks, stations,
+                            path1, path1.getOriginId(), path1.getDestinationId(),
+                            path1.getOrigin(), path1.getDestination(), model, new ArrayList<Block>()));
+                    specialBlocks2.addAll(findBlocks(blocks, stations,
+                            path2, path2.getOriginId(), path2.getDestinationId(),
+                            path2.getOrigin(), path2.getDestination(), model, new ArrayList<Block>()));
+                }
+            }
 
-            gabariResult = new LinkedHashMap<>(Objects.requireNonNull(doModel(blocks, pathExceptions,
-                    stations, commodity, stationA, stationB, a, b, model)));
-
-        } catch (IloException e) {
+            if (findBlocks(blocks, stations, commodity1,
+                    commodity1.getOriginId(), commodity1.getDestinationId(), commodity1.getOrigin(),
+                    commodity1.getDestination(), model, specialBlocks1) == null) {
+                commodity1.setDistance(Double.MAX_VALUE);
+            }
+            if (findBlocks(blocks, stations, commodity2,
+                    commodity2.getOriginId(), commodity2.getDestinationId(), commodity2.getOrigin(),
+                    commodity2.getDestination(), model, specialBlocks2) == null) {
+                commodity2.setDistance(Double.MAX_VALUE);
+            }
+            commodity = commodity1.getDistance() < commodity2.getDistance() ? commodity1 : commodity2;
+            gabariResult = new LinkedHashMap<>(Objects.requireNonNull(getPathSection(commodity)));
+        } catch (IloException | NullPointerException e) {
             e.printStackTrace();
         }
         System.gc();
         return gabariResult;
     }
 
-    public static LinkedHashMap<String, Integer> doModel(ArrayList<Block> blocks, PathExceptions pathExceptions,
-                                                         ArrayList<Station> stations, Commodity commodity,
-                                                         int stationA, int stationB, String a, String b, IloCplex model) {
-        LinkedHashMap<String, Integer> result = new LinkedHashMap<>();
+    private ArrayList<Block> findBlocks(ArrayList<Block> blocks, ArrayList<Station> stations,
+                                        Commodity commodity, int stationA, int stationB, String a,
+                                        String b, IloCplex model, ArrayList<Block> exceptions) {
         try {
             IloNumVar[] X = new IloNumVar[blocks.size()];
             IloNumExpr goalFunction;
             IloNumExpr constraint;
             //start solving model for the commodity
             //masirhai estesna baiad az masir khas beran
-            int temp = pathExceptions.isException(districtOf(a, stations),
-                    districtOf(b, stations));
-            if (temp == 1 || temp == 2) {
-                for (int j = 0; j < blocks.size(); j++) {
-                    boolean flag = true;
-                    for (int i = (temp - 1); i < pathExceptions.getBlocksMustbe().size(); ) {
-                        if (blocks.get(j).equals(pathExceptions.getBlocksMustbe().get(i))) {
-                            X[j] = model.numVar(1, 1, IloNumVarType.Int);
-                            flag = false;
-                        } else if ((a.equals("ری") && !b.equals("تهران")) && (blocks.get(j).getOrigin().equals("ری") && blocks.get(j).getDestination().equals("بهرام"))) {
-                            X[j] = model.numVar(1, 1, IloNumVarType.Int);
-                            flag = false;
+            for (int j = 0; j < blocks.size(); j++) {
+                boolean flag = true;
+                for (Block block : exceptions) {
+                    if (block.equals(blocks.get(j))) {
+                        X[j] = model.numVar(1, 1, IloNumVarType.Int);
+                        if (blocks.get(j).getOriginId() == blocks.get(j - 1).getDestinationId() &&
+                                blocks.get(j).getDestinationId() == blocks.get(j - 1).getOriginId()) {
+                            X[j - 1] = model.numVar(0, 0, IloNumVarType.Int);
+                        } else if (j + 1 < blocks.size()) {
+                            if (blocks.get(j).getOriginId() == blocks.get(j + 1).getDestinationId() &&
+                                    blocks.get(j).getDestinationId() == blocks.get(j + 1).getOriginId()) {
+                                X[j + 1] = model.numVar(0, 0, IloNumVarType.Int);
+                                j++;//add to counter
+                            }
                         }
-                        i += 2;
-                    }
-                    if (flag) {
-                        X[j] = model.numVar(0, 1, IloNumVarType.Int);
+                        flag = false;
                     }
                 }
-            } else if (a.equals("ری") && !b.equals("تهران")) {
-                for (int j = 0; j < blocks.size(); j++) {
-                    if (blocks.get(j).getOrigin().equals("ری") && blocks.get(j).getDestination().equals("بهرام")) {
-                        X[j] = model.numVar(1, 1, IloNumVarType.Int);
-                    } else {
-                        X[j] = model.numVar(0, 1, IloNumVarType.Int);
-                    }
-                }
-            } else if (b.equals("ری") && !a.equals("تهران")) {
-                for (int j = 0; j < blocks.size(); j++) {
-                    if (blocks.get(j).getOrigin().equals("بهرام") && blocks.get(j).getDestination().equals("ری")) {
-                        X[j] = model.numVar(1, 1, IloNumVarType.Int);
-                    } else {
-                        X[j] = model.numVar(0, 1, IloNumVarType.Int);
-                    }
-                }
-            } else {
-                for (int i = 0; i < blocks.size(); i++) {
-                    X[i] = model.numVar(0, 1, IloNumVarType.Int);
-                }
+                if (flag)
+                    X[j] = model.numVar(0, 1, IloNumVarType.Int);
             }
 
             goalFunction = model.constant(0);
@@ -203,24 +180,6 @@ public class Assignment {
                         }
                     }
                     commodity.setBlocks(tempBlocks);
-
-
-                    String temp1 = commodity.getBlocks().get(0).getOrigin();
-                    String temp2 = commodity.getBlocks().get(0).getDestination();
-                    int temp3 = commodity.getBlocks().get(0).getGabariCode();
-                    for (Block block : commodity.getBlocks()) {
-                        if (block.getGabariCode() != temp3) {
-                            result.put(temp1 + " - " + temp2, temp3);
-                            temp1 = block.getOrigin();
-                            temp2 = block.getDestination();
-                            temp3 = block.getGabariCode();
-                        } else {
-                            temp2 = block.getDestination();
-                        }
-                    }
-                    result.put(temp1 + " - " + temp2, temp3);
-
-
                     model.clearModel();
                     for (int i = 0; i < blocks.size(); i++) {
                         if (X[i] != null) {
@@ -229,12 +188,12 @@ public class Assignment {
                     }
                     goalFunction = null;
                     constraint = null;
+
                 } else {
-                    result = null;
                     System.out.println("No path");
                     model.clearModel();
+                    return null;
                 }
-                return result;
             } catch (CpxException e) {
                 e.printStackTrace();
                 return null;
@@ -243,13 +202,53 @@ public class Assignment {
             e.printStackTrace();
             return null;
         }
+        return commodity.getBlocks();
+    }
+
+    void resetCommoditiesResult() {
+        commodity.setHowMuchIsAllowed(1);
+        commodity.setDistance(0);
+        commodity.setTonKilometer(0);
+        commodity.setBlocks(new ArrayList<>());
+
+        for (Block block : blocks) {
+            block.setDemandWentPlanTon(0);
+            block.setDemandWentOperationTon(0);
+            block.setDemandWentPlanWagon(0);
+            block.setDemandWentOperatoinWagon(0);
+            block.setDemandBackPlanTon(0);
+            block.setDemandBackOperationTon(0);
+            block.setDemandBackPlanWagon(0);
+            block.setDemandBackOperationWagon(0);
+            block.setDemandWentPlanTonKilometer(0);
+            block.setDemandBackPlanTonKilometer(0);
+            block.setAverageMovingDistance(0);
+        }
+    }
+
+    public static LinkedHashMap<String, Integer> getPathSection(Commodity commodity) {
+        LinkedHashMap<String, Integer> result = new LinkedHashMap<>();
+        String temp1 = commodity.getBlocks().get(0).getOrigin();
+        String temp2 = commodity.getBlocks().get(0).getDestination();
+        int temp3 = commodity.getBlocks().get(0).getGabariCode();
+        for (Block block : commodity.getBlocks()) {
+            if (block.getGabariCode() != temp3) {
+                result.put(temp1 + " - " + temp2, temp3);
+                temp1 = block.getOrigin();
+                temp2 = block.getDestination();
+                temp3 = block.getGabariCode();
+            } else {
+                temp2 = block.getDestination();
+            }
+        }
+        result.put(temp1 + " - " + temp2, temp3);
+        return result;
     }
 
     public void readData(String outPutFile) {
         stations = new ArrayList<>();
         blocks = new ArrayList<>();
         outputBlocks = new ArrayList<>();
-        pathExceptions = new PathExceptions();
         districts = new TreeSet();
         wagons = new HashSet();
         mainCargoTypes = new HashSet();
@@ -308,39 +307,14 @@ public class Assignment {
                 blocks.add(block2);
             }
 
-            //read exceptions
+            //read special corridor
             XSSFSheet sheet4 = data.getSheetAt(3);
-            for (int i = 0; i < 4; i++) {
-                for (int j = 1; j < sheet4.getLastRowNum(); j++) {
-                    XSSFRow row = sheet4.getRow(j + 1);
-                    try {
-                        if (!row.getCell(i).getStringCellValue().equals("")) {
-                            switch (i) {
-                                case 0:
-                                    pathExceptions.getOriginDistricts().add(row.getCell(i).getStringCellValue());
-                                    break;
-                                case 1:
-                                    pathExceptions.getDestinationDistricts().add(row.getCell(i).getStringCellValue());
-                                    break;
-                                case 2:
-                                    for (Block block : blocks) {
-                                        if ((block.getOrigin().equals(row.getCell(i).getStringCellValue()) &&
-                                                block.getDestination().equals(row.getCell(i + 1).getStringCellValue()))
-                                                || (block.getOrigin().equals(row.getCell(i + 1).getStringCellValue()) &&
-                                                block.getDestination().equals(row.getCell(i).getStringCellValue()))) {
-
-                                            pathExceptions.getBlocksMustbe().add(block);
-
-                                        }
-                                    }
-                                    break;
-                            }
-                        }
-                    } catch (IllegalStateException | NullPointerException e) {
-                        break;
-                    }
-                }
+            for (int j = 1; j < sheet4.getLastRowNum(); j++) {
+                XSSFRow row = sheet4.getRow(j + 1);
+                specialCorridors.add(new Corridor(row.getCell(0).getStringCellValue(),
+                        row.getCell(1).getStringCellValue()));
             }
+
 
             XSSFSheet sheet5 = data.getSheetAt(4);
             for (int i = 0; i < sheet5.getLastRowNum(); i++) {
