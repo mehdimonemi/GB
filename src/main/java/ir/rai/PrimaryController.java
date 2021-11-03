@@ -8,6 +8,8 @@ import ir.rai.Data.Corridor;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Service;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
@@ -31,6 +33,7 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.controlsfx.control.CheckComboBox;
 import org.jfree.chart.fx.ChartViewer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.xy.XYSeries;
@@ -62,13 +65,20 @@ public class PrimaryController {
     Tab defaultTab;
 
     @FXML
-    Button addButton;
+    Button addButton, startBtm;
 
     @FXML
     TextField add1Para, add2Para, origin, destination;
 
     @FXML
-    ComboBox<String> coordinationBox, corridors;
+    ComboBox<String> coordinationBox;
+
+    @FXML
+    CheckComboBox<String> corridors;
+    @FXML
+    ProgressBar progressBar;
+    @FXML
+    Label serviceResult;
 
     @FXML
     TableView<MyCoordinate> table;
@@ -84,6 +94,7 @@ public class PrimaryController {
             );
 
     public static ArrayList<Corridor> specialCorridors = new ArrayList<>();
+    public static ArrayList<Tab> tabList;
 
     String outputFileLocation = "./output/output.xlsx";
     String outputDXFLocation = "./output/";
@@ -93,17 +104,28 @@ public class PrimaryController {
         assignment = new Assignment();
         checkOutputFile(outputFileLocation);
         configureTable();
+        calculationInitialize();
+    }
 
-//        StackPane box = new StackPane();
-//        box.setMinWidth(500);
-//        box.setMinHeight(500);
-//        GridPane header = new GridPane();
-//        header.add(new Label("نوع گاباری"), 0, 0);
-//
-////        Chart chart = new Chart(data);
-//
-////        box.getChildren().addAll(header, chart.chartViewer);
-//        defaultTab.setContent(box);
+    private void checkOutputFile(String outputFileLocation) {
+        try (
+                FileInputStream inFile = new FileInputStream(outputFileLocation);
+                XSSFWorkbook workbook = new XSSFWorkbook(inFile);
+        ) {
+            XSSFSheet sheet = workbook.getSheet("ورودی واگن یا بار");
+            data = FXCollections.observableArrayList();
+            origin.setText(sheet.getRow(0).getCell(1).getStringCellValue());
+            destination.setText(sheet.getRow(1).getCell(1).getStringCellValue());
+
+            int temp = sheet.getLastRowNum();
+            for (int i = 3; i <= sheet.getLastRowNum(); i++) {
+                data.add(new MyCoordinate(
+                        (float) sheet.getRow(i).getCell(0).getNumericCellValue(),
+                        (float) sheet.getRow(i).getCell(1).getNumericCellValue()));
+            }
+        } catch (IOException e) {
+            System.out.println("There is no Output File, or the file has a problem");
+        }
     }
 
     private void configureTable() {
@@ -118,9 +140,8 @@ public class PrimaryController {
                     ContextMenu rowMenu = new ContextMenu();
                     int rowIndex = row.getIndex();
                     MenuItem addTop = new MenuItem("Add top");
-
                     ;
-                    addTop.setOnAction(event -> data.add(max(0, data.indexOf(row.getItem()) - 1),
+                    addTop.setOnAction(event -> data.add(max(0, data.indexOf(row.getItem())),
                             new MyCoordinate(Float.parseFloat(add1Para.getText()),
                                     Float.parseFloat(add2Para.getText()))));
                     MenuItem addBottom = new MenuItem("Add bottom");
@@ -154,7 +175,7 @@ public class PrimaryController {
                 });
 
         TableColumn<MyCoordinate, Float> column2 = new TableColumn<MyCoordinate, Float>("Second Parameter");
-        column2.setMinWidth(150);
+        column2.setMinWidth(170);
         column2.setCellValueFactory(new PropertyValueFactory<MyCoordinate, Float>("y"));
         column2.setCellFactory(cellFactory);
         column2.setOnEditCommit(
@@ -170,14 +191,17 @@ public class PrimaryController {
         addIfNotPresent(table.getStyleClass(), ALTERNATING_ROW_COLORS);
         addIfNotPresent(table.getStyleClass(), TABLE_GRID_LINES);
 
-        coordinationBox.getItems().addAll("XY Coordination", "Length and Width");
+        coordinationBox.getItems().addAll("XY Coordination", "Width and Height");
         coordinationBox.setValue("XY Coordination");
         coordinationBox.valueProperty().addListener(observable -> coordinationBox.getValue());
 
-        for (Corridor corridor: specialCorridors) {
+        corridors.getItems().add("No exception");
+//        corridors.setValue("No exception");
+        for (Corridor corridor : specialCorridors) {
             corridors.getItems().add(corridor.toString());
         }
-        corridors.valueProperty().addListener(observable -> corridors.getValue());
+
+        corridors.checkModelProperty().addListener(observable -> corridors.getCheckModel().getCheckedItems());
         addButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
@@ -188,87 +212,100 @@ public class PrimaryController {
     }
 
     @FXML
-    private void calculate() {
-        realData = new ArrayList<>();
-        if (coordinationBox.getValue().equals("Length and Width")) {
-            changeToXY();
-        } else {
-            realData.addAll(data);
-        }
+    private void calculationInitialize() {
+        Service service = new Service() {
+            @Override
+            protected Task createTask() throws NullPointerException {
+                return new Task() {
+                    @Override
+                    protected Object call() throws Exception {
+                        realData = new ArrayList<>();
+                        tabList = new ArrayList<>();
+                        if (coordinationBox.getValue().equals("Width and Height")) {
+                            changeToXY();
+                        } else {
+                            realData.addAll(data);
+                        }
 
-        LinkedHashMap<String, Integer> gabariResult =
-                new LinkedHashMap<>(assignment.main(origin.getText(), destination.getText(), corridors.getValue()));
+                        LinkedHashMap<String, Integer> gabariResult =
+                                new LinkedHashMap<>(assignment.main(origin.getText(), destination.getText(), corridors.getCheckModel().getCheckedItems()));
 
-        while (tabPane.getTabs().size() > 0) {
-            tabPane.getTabs().remove(0);
-        }
+                        isFileExist(outputFileLocation);
+                        prepareExcel(outputFileLocation);
 
-        isFileExist(outputFileLocation);
-        prepareExcel(outputFileLocation);
+                        int rowCounter = 1;
+                        for (Map.Entry pair : gabariResult.entrySet()) {
+                            Tab tab = new Tab();
+                            tab.setClosable(false);
 
-        int rowCounter = 1;
-        for (Map.Entry pair : gabariResult.entrySet()) {
-            Tab tab = new Tab();
-            tab.setClosable(false);
+                            Label label = new Label(pair.getKey().toString());
+                            label.setRotate(90);
+                            ArrayList<Coordinate[]> transportable = new ArrayList<>();
+                            tab.setGraphic(new Group(label));
 
-            Label label = new Label(pair.getKey().toString());
-            label.setRotate(90);
-            ArrayList<Coordinate[]> transportable = new ArrayList<>();
-            tab.setGraphic(new Group(label));
+                            double outOfAllow = 0;
+                            double outOfFree = 0;
+                            if ((Integer) pair.getValue() >= 1) {
+                                transportable = analyzeGabari(gTips.get((Integer) pair.getValue() - 1));
 
-            double outOfAllow = 0;
-            double outOfFree = 0;
-            if ((Integer) pair.getValue() >= 1) {
-                transportable = analyzeGabari(gTips.get((Integer) pair.getValue() - 1));
-
-                //check whether we have a result from the analyze
-                if (transportable.size() == 0) {
-                    drawGabari(transportable, ((Integer) pair.getValue() - 1), outOfAllow, outOfFree, tab);
-                    tabPane.getTabs().add(tab);
-                    continue;
-                }
-                outOfAllow = transportable.get(1).length > 0 ?
-                        computeOutOfGabari(gTips.get((Integer) pair.getValue() - 1).getAllowedSpace(), transportable.get(1)) :
-                        0;
-                outOfFree = transportable.get(2).length > 0 ?
-                        computeOutOfGabari(gTips.get((Integer) pair.getValue() - 1).getFreeSpace(), transportable.get(2)) :
-                        0;
-                addToExcel(outputFileLocation,
-                        rowCounter, transportable,
-                        outOfAllow,
-                        outOfFree,
-                        ((Integer) pair.getValue() - 1),
-                        pair.getKey().toString());
-            } else {
-                addToExcel(outputFileLocation, rowCounter, null, 0, 0,
-                        ((Integer) pair.getValue() - 1), pair.getKey().toString());
+                                //check whether we have a result from the analyze
+                                if (transportable.size() == 0) {
+                                    drawGabari(transportable, ((Integer) pair.getValue() - 1), outOfAllow, outOfFree, tab);
+                                    tabList.add(tab);
+                                    continue;
+                                }
+                                outOfAllow = transportable.get(1).length > 0 ?
+                                        computeOutOfGabari(gTips.get((Integer) pair.getValue() - 1).getAllowedSpace(), transportable.get(1)) :
+                                        0;
+                                outOfFree = transportable.get(2).length > 0 ?
+                                        computeOutOfGabari(gTips.get((Integer) pair.getValue() - 1).getFreeSpace(), transportable.get(2)) :
+                                        0;
+                                addToExcel(outputFileLocation,
+                                        rowCounter, transportable,
+                                        outOfAllow,
+                                        outOfFree,
+                                        ((Integer) pair.getValue() - 1),
+                                        pair.getKey().toString());
+                            } else {
+                                addToExcel(outputFileLocation, rowCounter, null, 0, 0,
+                                        ((Integer) pair.getValue() - 1), pair.getKey().toString());
+                            }
+                            rowCounter++;
+                            drawGabari(transportable, ((Integer) pair.getValue() - 1), outOfAllow, outOfFree, tab);
+                            createDXF(transportable, ((Integer) pair.getValue() - 1), pair.getKey().toString());
+                            tabList.add(tab);
+                        }
+                        return null;
+                    }
+                };
             }
-            rowCounter++;
-            drawGabari(transportable, ((Integer) pair.getValue() - 1), outOfAllow, outOfFree, tab);
-            createDXF(transportable, ((Integer) pair.getValue() - 1), pair.getKey().toString());
-            tabPane.getTabs().add(tab);
-        }
-    }
+        };
 
-    private void checkOutputFile(String outputFileLocation) {
-        try (
-                FileInputStream inFile = new FileInputStream(outputFileLocation);
-                XSSFWorkbook workbook = new XSSFWorkbook(inFile);
-        ) {
-            XSSFSheet sheet = workbook.getSheet("ورودی واگن یا بار");
-            data = FXCollections.observableArrayList();
-            origin.setText(sheet.getRow(0).getCell(1).getStringCellValue());
-            destination.setText(sheet.getRow(1).getCell(1).getStringCellValue());
-
-            int temp = sheet.getLastRowNum();
-            for (int i = 3; i <= sheet.getLastRowNum(); i++) {
-                data.add(new MyCoordinate(
-                        (float) sheet.getRow(i).getCell(0).getNumericCellValue(),
-                        (float) sheet.getRow(i).getCell(1).getNumericCellValue()));
+        service.setOnRunning(e -> {
+            progressBar.setVisible(true);
+            serviceResult.setText("");
+        });
+        service.setOnFailed(e -> {
+            progressBar.setVisible(false);
+            serviceResult.setText("Unsuccessful Gabari Calculation");
+        });
+        service.setOnSucceeded(e -> {
+            while (tabPane.getTabs().size() > 0) {
+                tabPane.getTabs().remove(0);
             }
-        } catch (IOException e) {
-            System.out.println("There is no Output File, or the file has a problem");
-        }
+            for (Tab tab : tabList) {
+                tabPane.getTabs().add(tab);
+            }
+            progressBar.setVisible(false);
+            serviceResult.setText("Done. See Results");
+        });
+
+        startBtm.setOnAction(e -> {
+            if (!service.isRunning()) {
+                service.reset();
+                service.start();
+            }
+        });
     }
 
     private void prepareExcel(String outputFileLocation) {
@@ -318,13 +355,6 @@ public class PrimaryController {
         }
     }
 
-    private void isFileExist(String fileName) {
-        File f = new File(fileName);
-        if (f.exists() && !f.isDirectory()) {
-            f.delete();
-        }
-    }
-
     private void drawGabari(ArrayList<Coordinate[]> result, int gTipNumber, double outOfAllow,
                             double outOfFree, Tab tab) {
         VBox parent = new VBox();
@@ -340,6 +370,7 @@ public class PrimaryController {
         header.setNodeOrientation(NodeOrientation.RIGHT_TO_LEFT);
         header.setPadding(new Insets(0, 0, 10, 10));
         header.setAlignment(Pos.CENTER);
+        header.setStyle("-fx-font: 14px 'B Nazanin'");
         Node chartCanvas = null;
 
         Boolean haveCanvas = true;
@@ -365,17 +396,20 @@ public class PrimaryController {
                 header.add(new Label("بیرون زدگی از حد مجاز"), 0, 2);
                 header.add(new Label(new DecimalFormat("##.00").format(outOfFree) + " " + "سانتی متر"), 1, 2);
 
-                for (int j = 0; j < result.size(); j++) {
-                    if (result.get(j).length > 0) {
-                        XYSeries series = new XYSeries("Bar: part " + j + 1, false, true);
-                        for (int i = 0; i < result.get(j).length; i++) {
-                            if (isDuplicate(result.get(j), i)) {
-                                series.add(result.get(j)[i].x, result.get(j)[i].y);
+                int[] coloringSchema = new int[3];
+                int counter = 0;
+                for (int i = 0; i < result.size(); i++) {
+                    if (result.get(i).length > 0) {
+                        XYSeries series = new XYSeries("Bar: part " + counter, false, true);
+                        for (int j = 0; j < result.get(i).length; j++) {
+                            if (isDuplicate(result.get(i), j)) {
+                                series.add(result.get(i)[j].x, result.get(i)[j].y);
                                 dataset.addSeries(series);
-                                i++;
-                                series = new XYSeries("Bar: part " + j + 1, false, true);
+                                counter++;
+                                coloringSchema[i] += 1;
+                                series = new XYSeries("Bar: part " + counter, false, true);
                             } else {
-                                series.add(result.get(j)[i].x, result.get(j)[i].y);
+                                series.add(result.get(i)[j].x, result.get(i)[j].y);
                             }
                         }
                     }
@@ -392,34 +426,26 @@ public class PrimaryController {
                     series.add(gTip.getFreeSpace()[i][0], gTip.getFreeSpace()[i][1]);
                 }
                 dataset.addSeries(series);
-                switch (dataset.getSeriesCount()) {
-                    case 2: {
-                        renderer.setSeriesPaint(0, new Color(0, 0, 0, 255));
-                        renderer.setSeriesPaint(1, new Color(0, 0, 0, 255));
-                        break;
-                    }
-                    case 3: {
-                        renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
-                        renderer.setSeriesPaint(1, new Color(0, 0, 0, 255));
-                        renderer.setSeriesPaint(2, new Color(0, 0, 0, 255));
-                        break;
-                    }
-                    case 4: {
-                        renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
-                        renderer.setSeriesPaint(1, new Color(255, 200, 0, 255));
-                        renderer.setSeriesPaint(2, new Color(0, 0, 0, 255));
-                        renderer.setSeriesPaint(3, new Color(0, 0, 0, 255));
-                        break;
-                    }
-                    case 5: {
-                        renderer.setSeriesPaint(0, new Color(0, 255, 0, 255));
-                        renderer.setSeriesPaint(1, new Color(255, 200, 0, 255));
-                        renderer.setSeriesPaint(2, new Color(255, 0, 0, 255));
-                        renderer.setSeriesPaint(3, new Color(0, 0, 0, 255));
-                        renderer.setSeriesPaint(4, new Color(0, 0, 0, 255));
-                        break;
-                    }
+
+                int lines = 0;
+                for (int j = 0; j < coloringSchema[0]; j++) {
+                    renderer.setSeriesPaint(lines, new Color(0, 255, 0, 255));
+                    lines++;
                 }
+                for (int j = 0; j < coloringSchema[1]; j++) {
+                    renderer.setSeriesPaint(lines, new Color(255, 200, 0, 255));
+                    lines++;
+                    tab.setStyle("-fx-background-color: #d7d77b;");
+                }
+                for (int j = 0; j < coloringSchema[2]; j++) {
+                    renderer.setSeriesPaint(lines, new Color(255, 0, 0, 255));
+                    lines++;
+                    tab.setStyle("-fx-background-color: #ce6161");
+                }
+
+                renderer.setSeriesPaint(lines, new Color(0, 0, 0, 255));
+                renderer.setSeriesPaint(lines + 1, new Color(0, 0, 0, 255));
+
                 Chart chart = new Chart(dataset, renderer);
                 chartCanvas = useWorkaround(chart.chartViewer);
                 AnchorPane.setLeftAnchor(chartCanvas, 50.0);
@@ -577,19 +603,10 @@ public class PrimaryController {
         }
     }
 
-    public Geometry createPolygon(Coordinate[] cordinates, WKTReader wktRdr) {
-        StringBuilder wktA = new StringBuilder("POLYGON ((");
-        for (int i = 0; i < cordinates.length; i++) {
-            if (i != cordinates.length - 1) {
-                wktA.append(cordinates[i].x).append(" ").append(cordinates[i].y).append(", ");
-            } else {
-                wktA.append(cordinates[i].x).append(" ").append(cordinates[i].y).append("))");
-            }
-        }
-        try {
-            return wktRdr.read(wktA.toString());
-        } catch (Exception e) {
-            return null;
+    private void isFileExist(String fileName) {
+        File f = new File(fileName);
+        if (f.exists() && !f.isDirectory()) {
+            f.delete();
         }
     }
 
@@ -694,14 +711,11 @@ public class PrimaryController {
                     dxfGraphics.setColor(Color.RED);
 
                 Coordinate[] gabari = result.get(j);
-                int temp;
-                for (int i = 0; i < gabari.length; i++) {
-                    if (i == gabari.length - 1)
-                        temp = 0;
-                    else
-                        temp = i + 1;
-
-                    dxfGraphics.drawLine(gabari[i].x, -gabari[i].y, gabari[temp].x, -gabari[temp].y);
+                for (int i = 0; i < gabari.length - 1; i++) {
+                    if (isDuplicate(gabari, i)) {
+                        //do nothing
+                    } else
+                        dxfGraphics.drawLine(gabari[i].x, -gabari[i].y, gabari[i + 1].x, -gabari[i + 1].y);
                 }
             }
 

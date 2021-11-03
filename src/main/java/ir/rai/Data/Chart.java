@@ -64,6 +64,9 @@ public class Chart extends StackPane implements ChartMouseListenerFX {
         JFreeChart chart = ChartFactory.createXYLineChart
                 ("گاباری مسیر", "سانتی متر", "سانتی متر", dataset);
         chart.removeLegend();
+        chart.getTitle().setFont(new Font("B Nazanin", 1, 16));
+        chart.getXYPlot().getDomainAxis().setLabelFont(new Font("B Nazanin", 1, 14));
+        chart.getXYPlot().getRangeAxis().setLabelFont(new Font("B Nazanin", 1, 14));
         return chart;
     }
 

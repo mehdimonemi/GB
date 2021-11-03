@@ -1,3 +1,8 @@
+.root{
+    -fx-font-size: 10pt;
+    -fx-font-family: "B Nazanin";
+}
+
 .tab-pane .tab-header-area .tab {
     -fx-pref-height: 150;
     -fx-pref-width: 30;
@@ -15,10 +20,22 @@
     -fx-font: 16px 'B Nazanin';
 }
 
-/*GridPane {*/
-/*    -fx-padding: 10;*/
-/*    -fx-border-style: solid;*/
-/*    -fx-border-width: 2;*/
-/*    -fx-border-insets: 5;*/
-/*    -fx-border-radius: 5;*/
-/*}*/
+.progress-bar:indeterminate .dot_1 {
+    -fx-background-color: #1de82c;
+}
+
+.progress-bar:indeterminate .dot_2 {
+    -fx-background-color: derive(#35b840, -15%);
+}
+
+.progress-bar:indeterminate .dot_3 {
+    -fx-background-color: derive(#35b840, -30%);
+}
+
+.progress-bar:indeterminate .dot_4 {
+    -fx-background-color: derive(#35b840, -45%);
+}
+
+.progress-bar:indeterminate .dot_5 {
+    -fx-background-color: derive(#35b840, -60%);
+}

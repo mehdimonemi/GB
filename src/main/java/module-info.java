@@ -5,6 +5,7 @@ module ir.rai {
     requires poi;
     requires poi.ooxml;
     requires JDXF;
+    requires org.controlsfx.controls;
     requires org.jfree.chart.fx;
     requires org.jfree.jfreechart;
     requires org.jfxtras.styles.jmetro;

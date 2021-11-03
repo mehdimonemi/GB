@@ -61,6 +61,10 @@ public class Block {
         this.length = length;
     }
 
+    public Block() {
+
+    }
+
     public int getId() {
         return id;
     }

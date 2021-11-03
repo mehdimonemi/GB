@@ -4,15 +4,17 @@ import ilog.concert.IloException;
 import ilog.concert.IloNumExpr;
 import ilog.concert.IloNumVar;
 import ilog.concert.IloNumVarType;
-import ilog.cplex.CpxException;
 import ilog.cplex.IloCplex;
 import ir.rai.GTip;
+import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
 
 import static ir.rai.PrimaryController.specialCorridors;
@@ -32,48 +34,72 @@ public class Assignment {
 
     public static XSSFCell cell;
 
+    public static ArrayList<Commodity> solutions;
+    public static ArrayList<Block> stackForRemoveBlocks;
+    public static boolean isFinished = false;
+    public static Commodity previousCommodity = new Commodity();
+
     public static ArrayList<GTip> gTips = new ArrayList<>();
+    public static Task assignmentTask;
 
     public Assignment() {
         readData("./Data.xlsx");
         readGabari("./gabari.xlsx");
     }
 
-    public LinkedHashMap<String, Integer> main(String origin, String destination, String specialCorridor) {
+    public LinkedHashMap<String, Integer> main(String origin, String destination,
+                                               ObservableList<String> selectedCorridors) {
         commodity = new Commodity(origin, destination, stations);
-        Commodity commodity1 = new Commodity(origin, destination, stations);
-        Commodity commodity2 = new Commodity(origin, destination, stations);
+        double minDistance = Double.MAX_VALUE;
         resetCommoditiesResult();
         LinkedHashMap<String, Integer> gabariResult = null;
         try {
             IloCplex model = new IloCplex();
-            ArrayList<Block> specialBlocks1 = new ArrayList<>();
-            ArrayList<Block> specialBlocks2 = new ArrayList<>();
-            for (Corridor corridor : specialCorridors) {
-                if (corridor.toString().equals(specialCorridor)) {
-                    Commodity path1 = new Commodity(corridor.getOrigin(), corridor.getDestination(), stations);
-                    Commodity path2 = new Commodity(corridor.getDestination(), corridor.getOrigin(), stations);
-                    specialBlocks1.addAll(findBlocks(blocks, stations,
-                            path1, path1.getOriginId(), path1.getDestinationId(),
-                            path1.getOrigin(), path1.getDestination(), model, new ArrayList<Block>()));
-                    specialBlocks2.addAll(findBlocks(blocks, stations,
-                            path2, path2.getOriginId(), path2.getDestinationId(),
-                            path2.getOrigin(), path2.getDestination(), model, new ArrayList<Block>()));
+            ArrayList<Corridor> corridors = new ArrayList<>();
+            for (String path : selectedCorridors) {
+                for (Corridor corridor : specialCorridors) {
+                    if (corridor.toString().equals(path) && !path.equals("No exception")) {
+                        corridors.add(corridor);
+                    }
                 }
             }
 
-            if (findBlocks(blocks, stations, commodity1,
-                    commodity1.getOriginId(), commodity1.getDestinationId(), commodity1.getOrigin(),
-                    commodity1.getDestination(), model, specialBlocks1) == null) {
-                commodity1.setDistance(Double.MAX_VALUE);
+            solutions = new ArrayList<>();
+            if (corridors.size() != 0) {
+                mainLoop:
+                for (int x = 0; x < Math.pow(2, corridors.size()); x++) {
+                    ArrayList<Block> specialBlocks = new ArrayList<>();
+                    for (int i = 0; i < corridors.size(); i++) {
+                        Commodity path1;
+                        if ((x >> i) % 2 == 0)
+                            path1 = new Commodity(corridors.get(i).getOrigin(), corridors.get(i).getDestination(),
+                                    stations);
+                        else
+                            path1 = new Commodity(corridors.get(i).getDestination(), corridors.get(i).getOrigin(),
+                                    stations);
+
+                        ArrayList<Block> temp = new ArrayList<>(findBlocks(blocks, stations,
+                                path1, path1.getOriginId(), path1.getDestinationId(),
+                                path1.getOrigin(), path1.getDestination(), model, new ArrayList<>(),
+                                new Block(), true));
+                        if (temp.size() == 0)
+                            continue mainLoop;
+                        specialBlocks.addAll(temp);
+                    }
+
+                    previousCommodity = new Commodity();
+                    Commodity commodity1 = new Commodity(origin, destination, stations);
+                    stackForRemoveBlocks = new ArrayList<>();
+                    findBlocks(blocks, stations, commodity1,
+                            commodity1.getOriginId(), commodity1.getDestinationId(), commodity1.getOrigin(),
+                            commodity1.getDestination(), model, specialBlocks, new Block(), false);
+                }
+            } else {
+                findBlocks(blocks, stations, commodity,
+                        commodity.getOriginId(), commodity.getDestinationId(), commodity.getOrigin(),
+                        commodity.getDestination(), model, new ArrayList<>(), new Block(), false);
             }
-            if (findBlocks(blocks, stations, commodity2,
-                    commodity2.getOriginId(), commodity2.getDestinationId(), commodity2.getOrigin(),
-                    commodity2.getDestination(), model, specialBlocks2) == null) {
-                commodity2.setDistance(Double.MAX_VALUE);
-            }
-            commodity = commodity1.getDistance() < commodity2.getDistance() ? commodity1 : commodity2;
-            gabariResult = new LinkedHashMap<>(Objects.requireNonNull(getPathSection(commodity)));
+            gabariResult = new LinkedHashMap<>(Objects.requireNonNull(getPathSections(minSolution(solutions))));
         } catch (IloException | NullPointerException e) {
             e.printStackTrace();
         }
@@ -83,7 +109,8 @@ public class Assignment {
 
     private ArrayList<Block> findBlocks(ArrayList<Block> blocks, ArrayList<Station> stations,
                                         Commodity commodity, int stationA, int stationB, String a,
-                                        String b, IloCplex model, ArrayList<Block> exceptions) {
+                                        String b, IloCplex model, ArrayList<Block> exceptions,
+                                        Block removeBlock, boolean isCorridor) {
         try {
             IloNumVar[] X = new IloNumVar[blocks.size()];
             IloNumExpr goalFunction;
@@ -108,8 +135,12 @@ public class Assignment {
                         flag = false;
                     }
                 }
-                if (flag)
+                if (flag) {
                     X[j] = model.numVar(0, 1, IloNumVarType.Int);
+                }
+                if (blocks.get(j).equals(removeBlock)) {
+                    X[j] = model.numVar(0, 0, IloNumVarType.Int);
+                }
             }
 
             goalFunction = model.constant(0);
@@ -154,32 +185,43 @@ public class Assignment {
                 }
             } // end of constraints
 
+            boolean flagForRemove = false;
+            ArrayList<Block> tempBlocks = new ArrayList<>();
             model.setOut(null);
-            try {
-                if (model.solve()) {
-                    commodity.setDistance(model.getObjValue());
-                    commodity.setTonKilometer(model.getObjValue() * commodity.getTon());
-                    for (int i = 0; i < blocks.size(); i++) {
-                        if (model.getValue(X[i]) > 0.5) {
-                            commodity.getBlocks().add(blocks.get(i));
-                        }
+            if (model.solve()) {
+                commodity.setDistance(model.getObjValue());
+                commodity.setTonKilometer(model.getObjValue() * commodity.getTon());
+                for (int i = 0; i < blocks.size(); i++) {
+                    if (model.getValue(X[i]) > 0.5) {
+                        commodity.getBlocks().add(blocks.get(i));
                     }
+                }
 
-                    //sort blocks
-                    String tempOrigin = a;
-                    ArrayList<Block> tempBlocks = new ArrayList<>();
+                //sort blocks
+                String tempOrigin = a;
+                tempBlocks = new ArrayList<>();
+                ArrayList<Block> commodityBlocks = new ArrayList<>(commodity.getBlocks());
 
-                    while (!commodity.getBlocks().isEmpty()) {
-                        for (Block block : commodity.getBlocks()) {
+                long stopTime = System.currentTimeMillis() + 500;
+                try {
+                    while (!commodityBlocks.isEmpty()) {
+                        for (Block block : commodityBlocks) {
                             if (block.getOrigin().equals(tempOrigin)) {
                                 tempBlocks.add(block);
                                 tempOrigin = block.getDestination();
-                                commodity.getBlocks().remove(block);
+                                commodityBlocks.remove(block);
                                 break;
                             }
                         }
+                        if (System.currentTimeMillis() > stopTime) throw new Exception();
                     }
-                    commodity.setBlocks(tempBlocks);
+                } catch (Exception e) {
+                    System.out.println("time's up");
+                    if (previousCommodity.getBlocks().size() > 0)
+                        commodity = previousCommodity;
+
+                    flagForRemove = true;
+                } finally {
                     model.clearModel();
                     for (int i = 0; i < blocks.size(); i++) {
                         if (X[i] != null) {
@@ -188,21 +230,62 @@ public class Assignment {
                     }
                     goalFunction = null;
                     constraint = null;
-
-                } else {
-                    System.out.println("No path");
-                    model.clearModel();
-                    return null;
                 }
-            } catch (CpxException e) {
-                e.printStackTrace();
-                return null;
+            } else {
+                commodity.setDistance(Double.MAX_VALUE);
+                commodity.setBlocks(new ArrayList<>());
+                System.out.println("No path");
+                if (exceptions.size() > 0) {
+                    if (previousCommodity.getBlocks().size() > 0)
+                        commodity = previousCommodity;
+                    flagForRemove = true;
+                }
+                model.clearModel();
+            }
+            if (flagForRemove || exceptions.size() > 0) {
+                if (!flagForRemove) {
+                    //finally if blocks are sorted we consider the solution possible
+                    commodity.setBlocks(tempBlocks);
+                    previousCommodity = commodity;
+                    solutions.add(commodity);
+                }
+                boolean flag = false;
+                for (int i = 0; i < commodity.getBlocks().size(); i++) {
+                    if (!stackForRemoveBlocks.contains(commodity.getBlocks().get(i))
+                            && !exceptions.contains(commodity.getBlocks().get(i))) {
+                        removeBlock = commodity.getBlocks().get(i);
+                        stackForRemoveBlocks.add(commodity.getBlocks().get(i));
+                        flag = true;
+                        break;
+                    }
+                }
+                if (flag)
+                    findBlocks(blocks, stations, new Commodity(a, b, stations),
+                            commodity.getOriginId(), commodity.getDestinationId(), commodity.getOrigin(),
+                            commodity.getDestination(), model, exceptions, removeBlock, true);
+                else return commodity.getBlocks();
+            } else if (!isCorridor){
+                commodity.setBlocks(tempBlocks);
+                solutions.add(commodity);
             }
         } catch (IloException e) {
-            e.printStackTrace();
-            return null;
+            commodity.setDistance(Double.MAX_VALUE);
+            commodity.setBlocks(new ArrayList<>());
+            System.out.println("Problem in cplex library");
+            return new ArrayList<Block>();
         }
         return commodity.getBlocks();
+    }
+
+    private Commodity minSolution(ArrayList<Commodity> solutions) {
+        Commodity min = new Commodity();
+        min.setDistance(Double.MAX_VALUE);
+        for (Commodity commodity : solutions) {
+            if (commodity.getDistance() < min.getDistance()) {
+                min = commodity;
+            }
+        }
+        return min;
     }
 
     void resetCommoditiesResult() {
@@ -226,7 +309,7 @@ public class Assignment {
         }
     }
 
-    public static LinkedHashMap<String, Integer> getPathSection(Commodity commodity) {
+    public static LinkedHashMap<String, Integer> getPathSections(Commodity commodity) {
         LinkedHashMap<String, Integer> result = new LinkedHashMap<>();
         String temp1 = commodity.getBlocks().get(0).getOrigin();
         String temp2 = commodity.getBlocks().get(0).getDestination();

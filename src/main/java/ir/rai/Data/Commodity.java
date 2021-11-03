@@ -60,6 +60,10 @@ public class Commodity {
         setOriginDistrict(stations);
     }
 
+    public Commodity() {
+
+    }
+
     public double getHowMuchIsAllowed() {
         return howMuchIsAllowed;
     }
