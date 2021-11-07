@@ -10,7 +10,6 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
-import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
@@ -138,9 +137,7 @@ public class PrimaryController {
                 tableView -> {
                     TableRow<MyCoordinate> row = new TableRow<>();
                     ContextMenu rowMenu = new ContextMenu();
-                    int rowIndex = row.getIndex();
                     MenuItem addTop = new MenuItem("Add top");
-                    ;
                     addTop.setOnAction(event -> data.add(max(0, data.indexOf(row.getItem())),
                             new MyCoordinate(Float.parseFloat(add1Para.getText()),
                                     Float.parseFloat(add2Para.getText()))));
@@ -170,18 +167,18 @@ public class PrimaryController {
         column1.setCellFactory(cellFactory);
         column1.setOnEditCommit(
                 (EventHandler<CellEditEvent<MyCoordinate, Float>>) t -> {
-                    ((MyCoordinate) t.getTableView().getItems().get(
-                            t.getTablePosition().getRow())).setX(t.getNewValue());
+                    t.getTableView().getItems().get(
+                            t.getTablePosition().getRow()).setX(t.getNewValue());
                 });
 
-        TableColumn<MyCoordinate, Float> column2 = new TableColumn<MyCoordinate, Float>("Second Parameter");
+        TableColumn<MyCoordinate, Float> column2 = new TableColumn<>("Second Parameter");
         column2.setMinWidth(170);
-        column2.setCellValueFactory(new PropertyValueFactory<MyCoordinate, Float>("y"));
+        column2.setCellValueFactory(new PropertyValueFactory<>("y"));
         column2.setCellFactory(cellFactory);
         column2.setOnEditCommit(
-                (EventHandler<CellEditEvent<MyCoordinate, Float>>) t -> {
-                    ((MyCoordinate) t.getTableView().getItems().get(
-                            t.getTablePosition().getRow())).setY(t.getNewValue());
+                t -> {
+                    t.getTableView().getItems().get(
+                            t.getTablePosition().getRow()).setY(t.getNewValue());
                 });
 
         table.setItems(data);
@@ -196,19 +193,14 @@ public class PrimaryController {
         coordinationBox.valueProperty().addListener(observable -> coordinationBox.getValue());
 
         corridors.getItems().add("No exception");
-//        corridors.setValue("No exception");
+        corridors.getCheckModel().check(0);
         for (Corridor corridor : specialCorridors) {
             corridors.getItems().add(corridor.toString());
         }
 
         corridors.checkModelProperty().addListener(observable -> corridors.getCheckModel().getCheckedItems());
-        addButton.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent actionEvent) {
-                data.add(new MyCoordinate(Float.parseFloat(add1Para.getText()), Float.parseFloat(add2Para.getText())));
-            }
-        });
-
+        addButton.setOnAction(actionEvent ->
+                data.add(new MyCoordinate(Float.parseFloat(add1Para.getText()), Float.parseFloat(add2Para.getText()))));
     }
 
     @FXML
@@ -342,10 +334,10 @@ public class PrimaryController {
 
             setCell(row.createCell(0), "مسیر", style);
             setCell(row.createCell(1), "تیب گاباری", style);
-            setCell(row.createCell(2), "قابلیت عبور فضای آزاد", style);
-            setCell(row.createCell(3), "بیرون زدگی از فضای آزاد", style);
-            setCell(row.createCell(4), "قابلیت عبور از حد مجاز", style);
-            setCell(row.createCell(5), "بیرون زدگی از حد مجاز", style);
+            setCell(row.createCell(2), "قابلیت عبور فضای مجاز", style);
+            setCell(row.createCell(3), "اندازه ورود به فضای مجاز", style);
+            setCell(row.createCell(4), "قابلیت عبور از حد آزاد", style);
+            setCell(row.createCell(5), "اندازه ورود به فضای آزاد", style);
 
             outFile = new FileOutputStream(outputFileLocation);
             workbook.write(outFile);
@@ -390,10 +382,10 @@ public class PrimaryController {
                 header.add(new Label("نوع گاباری"), 0, 0);
                 header.add(new Label(gTip.getName()), 1, 0);
 
-                header.add(new Label("بیرون زدگی از فضای آزاد"), 0, 1);
+                header.add(new Label("اندازه ورود به فضای مجاز"), 0, 1);
                 header.add(new Label(new DecimalFormat("##.00").format(outOfAllow) + " " + "سانتی متر"), 1, 1);
 
-                header.add(new Label("بیرون زدگی از حد مجاز"), 0, 2);
+                header.add(new Label("اندازه ورود به فضای آزاد"), 0, 2);
                 header.add(new Label(new DecimalFormat("##.00").format(outOfFree) + " " + "سانتی متر"), 1, 2);
 
                 int[] coloringSchema = new int[3];
