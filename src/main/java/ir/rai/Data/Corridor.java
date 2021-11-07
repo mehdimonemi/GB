@@ -2,11 +2,22 @@ package ir.rai.Data;
 
 public class Corridor {
     private String origin;
-    private String Destination;
+    private String realOrigin;
+    private String destination;
+    private String realDestination;
 
     public Corridor(String origin, String destination) {
         this.origin = origin;
-        this.Destination = destination;
+        this.destination = destination;
+        this.realOrigin = origin;
+        this.realDestination = destination;
+    }
+
+    public Corridor(String origin, String realOrigin, String destination, String realDestination) {
+        this.origin = origin;
+        this.realOrigin = realOrigin;
+        this.destination = destination;
+        this.realDestination = realDestination;
     }
 
     public String getOrigin() {
@@ -18,15 +29,31 @@ public class Corridor {
     }
 
     public String getDestination() {
-        return Destination;
+        return destination;
     }
 
     public void setDestination(String destination) {
-        Destination = destination;
+        this.destination = destination;
+    }
+
+    public String getRealOrigin() {
+        return realOrigin;
+    }
+
+    public void setRealOrigin(String realOrigin) {
+        this.realOrigin = realOrigin;
+    }
+
+    public String getRealDestination() {
+        return realDestination;
+    }
+
+    public void setRealDestination(String realDestination) {
+        this.realDestination = realDestination;
     }
 
     @Override
     public String toString() {
-        return origin + " - " + Destination;
+        return origin + " - " + destination;
     }
 }

@@ -6,40 +6,64 @@
 <?import org.controlsfx.control.CheckComboBox?>
 <VBox stylesheets="@primary.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="ir.rai.PrimaryController">
-    <SplitPane fx:id="hBox" orientation="HORIZONTAL" dividerPositions="0.6">
-        <Pane fx:id="pane">
+    <SplitPane dividerPositions="0.75">
+        <Pane>
             <TabPane fx:id="tabPane" side="LEFT" rotateGraphic="true">
                 <Tab fx:id="defaultTab" closable="false">
                     <graphic>
                         <Group>
-                            <Label text="نتایج" rotate="90"></Label>
+                            <Label text="نتایج" rotate="90"/>
                         </Group>
                     </graphic>
-                    <VBox minHeight="800"></VBox>
                 </Tab>
             </TabPane>
         </Pane>
 
-        <VBox fx:id="leftContext" spacing="5">
-            <GridPane>
-                <Label text="Origin" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                <TextField fx:id="origin" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
-                <Label text="Destination" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-                <TextField fx:id="destination" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+        <VBox spacing="5">
+            <GridPane hgap="10" vgap="2">
+                <Label text="Origin" GridPane.columnIndex="0" GridPane.rowIndex="0" id="myLabel"/>
+                <TextField fx:id="origin" GridPane.columnIndex="1" GridPane.rowIndex="0"
+                           nodeOrientation="RIGHT_TO_LEFT"/>
+                <Label text="Destination" GridPane.columnIndex="0" GridPane.rowIndex="1" id="myLabel"/>
+                <TextField fx:id="destination" GridPane.columnIndex="1" GridPane.rowIndex="1"
+                           nodeOrientation="RIGHT_TO_LEFT"/>
                 <ComboBox fx:id="coordinationBox" GridPane.columnIndex="2" GridPane.halignment="LEFT"
-                          GridPane.rowIndex="1" GridPane.columnSpan="2"/>
+                          GridPane.rowIndex="1"/>
+                <Button fx:id="deleteData" text="Delete All" GridPane.rowIndex="1"
+                        GridPane.columnIndex="3"/>
             </GridPane>
-            <TableView fx:id="table" editable="true"/>
-            <HBox spacing="5">
-                <Button fx:id="addButton" text="add"/>
-                <TextField fx:id="add1Para" promptText="X or Width"/>
-                <TextField fx:id="add2Para" promptText="Y or Height"/>
-            </HBox>
-            <CheckComboBox fx:id="corridors" GridPane.columnIndex="2" GridPane.halignment="LEFT"
-                           GridPane.rowIndex="1" GridPane.columnSpan="2"/>
-            <Button fx:id="startBtm" text="Start Calculation"/>
+
+            <VBox>
+                <TableView fx:id="inputTable" editable="true"/>
+                <HBox spacing="5">
+                    <Button fx:id="addButton" text="add"/>
+                    <TextField fx:id="add1Para" promptText="X or Width"/>
+                    <TextField fx:id="add2Para" promptText="Y or Height"/>
+                </HBox>
+            </VBox>
+
+            <GridPane hgap="5" vgap="5">
+                <Label text="path exceptions" id="myLabel" GridPane.columnIndex="0"
+                       GridPane.rowIndex="0"/>
+                <CheckComboBox fx:id="corridors" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+                <Label text="wagon height   " id="myLabel" GridPane.columnIndex="0"
+                       GridPane.rowIndex="1"/>
+                <ComboBox fx:id="wagonHeight" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+                <Label text="Output:" id="myLabel" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                <TextField fx:id="outDirectory" minWidth="100"
+                           editable="false" promptText="شماره نامه/نام خروجی"
+                           GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                <Button fx:id="loadFile" text="Load" GridPane.columnIndex="2" GridPane.rowIndex="2"/>
+
+                <Button fx:id="startBtm" text="Calculate and Save"
+                        GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+            </GridPane>
+
             <ProgressBar fx:id="progressBar" visible="false"/>
             <Label fx:id="serviceResult"/>
+            <Label text="All numbers in tables and chart are in Millimeter scale." id="myLabel"/>
         </VBox>
     </SplitPane>
 </VBox>

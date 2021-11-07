@@ -1,8 +1,10 @@
 package ir.rai.Data;
 
+import ir.rai.App;
 import javafx.application.Platform;
 import javafx.scene.layout.StackPane;
 import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.fx.ChartViewer;
@@ -19,20 +21,33 @@ import org.jfree.data.xy.XYSeriesCollection;
 
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
+import java.io.IOException;
+import java.io.InputStream;
 import java.text.DecimalFormat;
 
 public class Chart extends StackPane implements ChartMouseListenerFX {
 
     public ChartViewer chartViewer;
     public JFreeChart chart;
+    public ChartPanel chartPanel;
     private Crosshair xCrosshair;
     private Crosshair yCrosshair;
 
-    public Chart(XYSeriesCollection dataset, XYLineAndShapeRenderer renderer) {
-        this.chart = createChart(dataset);
+    public Chart(XYSeriesCollection dataset, XYLineAndShapeRenderer renderer, String sectionName) {
+        InputStream is = App.loadFont("Gandom-FD.ttf");
+        Font gandom = null;
+        try {
+            gandom = Font.createFont(Font.TRUETYPE_FONT, is);
+        } catch (FontFormatException | IOException e) {
+            e.printStackTrace();
+        }
+
+        this.chart = createChart(dataset, sectionName, gandom);
         this.chart.getXYPlot().setRenderer(renderer);
-        this.chartViewer = new ChartViewer(chart);
+        this.chart.getXYPlot().setBackgroundPaint(new Color(173, 173, 173));
+        this.chartViewer = new ChartViewer(chart, false);
         this.chartViewer.addChartMouseListener(this);
+        this.chartViewer.getCanvas().getChart().setBackgroundPaint(new Color(242, 242, 242));
         getChildren().add(this.chartViewer);
 
         CrosshairOverlayFX crosshairOverlay = new CrosshairOverlayFX();
@@ -44,6 +59,8 @@ public class Chart extends StackPane implements ChartMouseListenerFX {
         this.xCrosshair.setLabelVisible(true);
         this.xCrosshair.setLabelGenerator(new StandardCrosshairLabelGenerator("{0}",
                 new DecimalFormat("##")));
+        this.xCrosshair.setLabelFont(gandom.deriveFont(12f));
+
         this.yCrosshair = new Crosshair(Double.NaN, Color.GRAY,
                 new BasicStroke(0f));
         this.yCrosshair.setStroke(new BasicStroke(1.5f,
@@ -52,6 +69,8 @@ public class Chart extends StackPane implements ChartMouseListenerFX {
         this.yCrosshair.setLabelVisible(true);
         this.yCrosshair.setLabelGenerator(new StandardCrosshairLabelGenerator("{0}",
                 new DecimalFormat("##")));
+        this.yCrosshair.setLabelFont(gandom.deriveFont(12f));
+
         crosshairOverlay.addDomainCrosshair(xCrosshair);
         crosshairOverlay.addRangeCrosshair(yCrosshair);
 
@@ -60,20 +79,23 @@ public class Chart extends StackPane implements ChartMouseListenerFX {
         });
     }
 
-    private static JFreeChart createChart(XYDataset dataset) {
+    private JFreeChart createChart(XYDataset dataset, String sectionName, Font gandom) {
         JFreeChart chart = ChartFactory.createXYLineChart
-                ("گاباری مسیر", "سانتی متر", "سانتی متر", dataset);
+                ("گاباری مسیر " + sectionName, "میلی متر", "میلی متر", dataset);
         chart.removeLegend();
-        chart.getTitle().setFont(new Font("B Nazanin", 1, 16));
-        chart.getXYPlot().getDomainAxis().setLabelFont(new Font("B Nazanin", 1, 14));
-        chart.getXYPlot().getRangeAxis().setLabelFont(new Font("B Nazanin", 1, 14));
+        chart.getTitle().setFont(gandom.deriveFont(12f));
+        chart.getXYPlot().getDomainAxis().setLabelFont(gandom.deriveFont(12f));
+        chart.getXYPlot().getDomainAxis().setTickLabelFont(gandom.deriveFont(12f));
+        chart.getXYPlot().getRangeAxis().setLabelFont(gandom.deriveFont(12f));
+        chart.getXYPlot().getRangeAxis().setTickLabelFont(gandom.deriveFont(12f));
         return chart;
-    }
+}
 
     @Override
     public void chartMouseClicked(ChartMouseEventFX chartMouseEventFX) {
 
     }
+
 
     @Override
     public void chartMouseMoved(ChartMouseEventFX event) {

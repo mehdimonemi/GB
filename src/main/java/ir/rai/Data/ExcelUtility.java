@@ -22,6 +22,9 @@ public class ExcelUtility {
         font.setCharSet(FontCharset.ARABIC);
         font.setFontName(fontName);
         style.setFont(font);
+        DataFormat format = workbook.createDataFormat();
+        style.setDataFormat(format.getFormat("#,##0"));
+
 
         XSSFColor headingColor = new XSSFColor(color);
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);

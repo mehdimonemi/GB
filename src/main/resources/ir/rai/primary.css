@@ -1,41 +1,135 @@
-.root{
-    -fx-font-size: 10pt;
-    -fx-font-family: "B Nazanin";
+@font-face {
+    font-family: Gandom;
+    src: url('Gandom-FD.ttf');
+}
+
+.root {
+    -fx-font-size: 11;
+    -fx-font-family: "Gandom";
+    table-column-color: #aad5d4;
+    progress-bar-color: #35b840;
+}
+
+#pathTable .column-header .label {
+    -fx-background-color: table-column-color;
+    -fx-alignment: center;
+    -fx-padding: 0.05em 0.5em 0.05em 0.5em;
+    -fx-font-weight: Bold;
+    -fx-font-size: 13;
+}
+
+#pathTable .column-header {
+    -fx-background-color: table-column-color;
+}
+
+#pathTable .table-cell {
+    -fx-alignment: CENTER-RIGHT;
+    -fx-padding: 0.05em 0.5em 0.05em 0.5em;
+}
+
+.table-view .column-header .label {
+    -fx-background-color: table-column-color;
+    -fx-alignment: center;
+    -fx-padding: 0.05em 0.5em 0.05em 0.5em;
+}
+
+.table-view .column-header {
+    -fx-background-color: table-column-color;
 }
 
 .tab-pane .tab-header-area .tab {
     -fx-pref-height: 150;
     -fx-pref-width: 30;
-    -fx-font-family: 'B Nazanin';
-
+    -fx-font-family: "Gandom";
+    -fx-font-size: 11;
 }
 
 .tab-pane > .tab-header-area > .headers-region > .tab {
     -fx-padding: 5 0 0 5;
     -fx-alignment: Center;
-    -fx-font-family: 'B Nazanin';
+    -fx-font-family: "Gandom";
 }
 
 .tab {
-    -fx-font: 16px 'B Nazanin';
+    -fx-font: 16 "Gandom";
+}
+
+#greenTab:selected {
+    -fx-background-color: #f2f2f2;
+    -fx-border-color: #b4b4b4;
+    -fx-background-radius: 5, 5, 5;
+}
+
+#greenTab {
+    -fx-background-color: #6b9870;
+}
+
+#yellowTab:selected {
+    -fx-background-color: #f2f2f2;
+    -fx-border-color: #b4b4b4;
+    -fx-background-radius: 5, 5, 5;
+}
+
+#yellowTab {
+    -fx-background-color: #cece5d;
+}
+
+#redTab:selected {
+    -fx-background-color: #f2f2f2;
+    -fx-border-color: #b4b4b4;
+    -fx-background-radius: 5, 5, 5;
+}
+
+#redTab {
+    -fx-background-color: #d56767;
+}
+
+#firstTab:selected {
+    -fx-background-color: #f2f2f2;
+    -fx-border-color: #b4b4b4;
+    -fx-background-radius: 5, 5, 5;
+}
+
+#firstTab {
+    -fx-background-color: #aad5d4;
 }
 
 .progress-bar:indeterminate .dot_1 {
-    -fx-background-color: #1de82c;
+    -fx-background-color: progress-bar-color;
 }
 
 .progress-bar:indeterminate .dot_2 {
-    -fx-background-color: derive(#35b840, -15%);
+    -fx-background-color: derive(progress-bar-color, -15%);
 }
 
 .progress-bar:indeterminate .dot_3 {
-    -fx-background-color: derive(#35b840, -30%);
+    -fx-background-color: derive(progress-bar-color, -30%);
 }
 
 .progress-bar:indeterminate .dot_4 {
-    -fx-background-color: derive(#35b840, -45%);
+    -fx-background-color: derive(progress-bar-color, -45%);
 }
 
 .progress-bar:indeterminate .dot_5 {
-    -fx-background-color: derive(#35b840, -60%);
+    -fx-background-color: derive(progress-bar-color, -60%);
+}
+
+.table-row-cell:empty:odd, .table-row-cell:empty:even {
+    -fx-background-color: transparent;
+}
+
+.text {
+    -fx-font-smoothing-type: lcd
+}
+
+#myLabel .text {
+    -fx-font-size: 12;
+}
+
+.text-field {
+    -fx-padding: 0.2em 0.5em 0.2em 0.5em;
+}
+
+.button .text {
+    -fx-padding: 0.2em 0.5em 0.2em 0.5em;
 }

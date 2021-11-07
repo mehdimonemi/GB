@@ -6,17 +6,20 @@ import ilog.concert.IloNumVar;
 import ilog.concert.IloNumVarType;
 import ilog.cplex.IloCplex;
 import ir.rai.GTip;
+import ir.rai.Section;
 import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 
+import static ir.rai.PrimaryController.namesCheck;
 import static ir.rai.PrimaryController.specialCorridors;
 
 public class Assignment {
@@ -40,7 +43,8 @@ public class Assignment {
     public static Commodity previousCommodity = new Commodity();
 
     public static ArrayList<GTip> gTips = new ArrayList<>();
-    public static Task assignmentTask;
+    public static ArrayList<Section> pathSection = null;
+    public static ArrayList<String> pathDistricts = null;
 
     public Assignment() {
         readData("./Data.xlsx");
@@ -50,9 +54,8 @@ public class Assignment {
     public LinkedHashMap<String, Integer> main(String origin, String destination,
                                                ObservableList<String> selectedCorridors) {
         commodity = new Commodity(origin, destination, stations);
-        double minDistance = Double.MAX_VALUE;
         resetCommoditiesResult();
-        LinkedHashMap<String, Integer> gabariResult = null;
+        LinkedHashMap<String, Integer> gabariSections = null;
         try {
             IloCplex model = new IloCplex();
             ArrayList<Corridor> corridors = new ArrayList<>();
@@ -72,10 +75,10 @@ public class Assignment {
                     for (int i = 0; i < corridors.size(); i++) {
                         Commodity path1;
                         if ((x >> i) % 2 == 0)
-                            path1 = new Commodity(corridors.get(i).getOrigin(), corridors.get(i).getDestination(),
+                            path1 = new Commodity(corridors.get(i).getRealOrigin(), corridors.get(i).getRealDestination(),
                                     stations);
                         else
-                            path1 = new Commodity(corridors.get(i).getDestination(), corridors.get(i).getOrigin(),
+                            path1 = new Commodity(corridors.get(i).getRealDestination(), corridors.get(i).getRealOrigin(),
                                     stations);
 
                         ArrayList<Block> temp = new ArrayList<>(findBlocks(blocks, stations,
@@ -90,6 +93,8 @@ public class Assignment {
                     previousCommodity = new Commodity();
                     Commodity commodity1 = new Commodity(origin, destination, stations);
                     stackForRemoveBlocks = new ArrayList<>();
+
+                    //Recursion method
                     findBlocks(blocks, stations, commodity1,
                             commodity1.getOriginId(), commodity1.getDestinationId(), commodity1.getOrigin(),
                             commodity1.getDestination(), model, specialBlocks, new Block(), false);
@@ -99,12 +104,55 @@ public class Assignment {
                         commodity.getOriginId(), commodity.getDestinationId(), commodity.getOrigin(),
                         commodity.getDestination(), model, new ArrayList<>(), new Block(), false);
             }
-            gabariResult = new LinkedHashMap<>(Objects.requireNonNull(getPathSections(minSolution(solutions))));
+            Commodity selectedCommodity = minSolution(solutions);
+            gabariSections = new LinkedHashMap<>(Objects.requireNonNull(getGabariSections(selectedCommodity)));
+            pathSection = new ArrayList<>(getPathSections(selectedCommodity));
+            pathDistricts = new ArrayList<>(getPathDistricts(selectedCommodity));
         } catch (IloException | NullPointerException e) {
             e.printStackTrace();
         }
         System.gc();
-        return gabariResult;
+        return gabariSections;
+    }
+
+    private ArrayList<String> getPathDistricts(Commodity selectedCommodity) {
+        ArrayList<String> results = new ArrayList<>();
+        for (Block block : selectedCommodity.getBlocks()) {
+            if (!results.contains(block.getDistrict())) {
+                results.add(block.getDistrict());
+            }
+        }
+        return results;
+    }
+
+    private ArrayList<Section> getPathSections(Commodity selectedCommodity) {
+        ArrayList<Section> results = new ArrayList<>();
+        String origin = selectedCommodity.getOrigin();
+        String destination = "";
+        for (Block block : selectedCommodity.getBlocks()) {
+            if (isMultiBlock(block.getDestinationId())) {
+                destination = block.getDestination();
+                results.add(new Section(origin, destination));
+                origin = destination;
+            }
+        }
+        if (!destination.equals(selectedCommodity.getDestination()))
+            results.add(new Section(destination, selectedCommodity.getDestination()));
+
+        return results;
+    }
+
+    private boolean isMultiBlock(int stationId) {
+        int connection = 0;
+        for (Block block : blocks) {
+            if (block.getOriginId() == stationId) {
+                connection++;
+            }
+            if (connection >= 3) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ArrayList<Block> findBlocks(ArrayList<Block> blocks, ArrayList<Station> stations,
@@ -244,7 +292,7 @@ public class Assignment {
             }
             if (flagForRemove || exceptions.size() > 0) {
                 if (!flagForRemove) {
-                    //finally if blocks are sorted we consider the solution possible
+                    //finally, if blocks are sorted we consider the solution possible
                     commodity.setBlocks(tempBlocks);
                     previousCommodity = commodity;
                     solutions.add(commodity);
@@ -264,7 +312,7 @@ public class Assignment {
                             commodity.getOriginId(), commodity.getDestinationId(), commodity.getOrigin(),
                             commodity.getDestination(), model, exceptions, removeBlock, true);
                 else return commodity.getBlocks();
-            } else if (!isCorridor){
+            } else if (!isCorridor) {
                 commodity.setBlocks(tempBlocks);
                 solutions.add(commodity);
             }
@@ -309,7 +357,7 @@ public class Assignment {
         }
     }
 
-    public static LinkedHashMap<String, Integer> getPathSections(Commodity commodity) {
+    public static LinkedHashMap<String, Integer> getGabariSections(Commodity commodity) {
         LinkedHashMap<String, Integer> result = new LinkedHashMap<>();
         String temp1 = commodity.getBlocks().get(0).getOrigin();
         String temp2 = commodity.getBlocks().get(0).getDestination();
@@ -370,7 +418,7 @@ public class Assignment {
                         row.getCell(1).getStringCellValue(),
                         row.getCell(2).getStringCellValue(),
                         row.getCell(3).getStringCellValue(),
-                        (int) row.getCell(4).getNumericCellValue(),
+                        row.getCell(4).getNumericCellValue(),
                         (int) row.getCell(5).getNumericCellValue(),
                         1,
                         row.getCell(8).getNumericCellValue(),
@@ -382,7 +430,7 @@ public class Assignment {
                         row.getCell(1).getStringCellValue(),
                         row.getCell(3).getStringCellValue(),
                         row.getCell(2).getStringCellValue(),
-                        (int) row.getCell(4).getNumericCellValue(),
+                        row.getCell(4).getNumericCellValue(),
                         (int) row.getCell(5).getNumericCellValue(),
                         2,
                         ((row.getCell(5).getNumericCellValue() == 2) ? row.getCell(10).getNumericCellValue() : 0),
@@ -391,15 +439,24 @@ public class Assignment {
             }
 
             //read special corridor
-            XSSFSheet sheet4 = data.getSheetAt(3);
+            XSSFSheet sheet4 = data.getSheetAt(2);
             for (int j = 1; j < sheet4.getLastRowNum(); j++) {
                 XSSFRow row = sheet4.getRow(j + 1);
-                specialCorridors.add(new Corridor(row.getCell(0).getStringCellValue(),
-                        row.getCell(1).getStringCellValue()));
+
+                if (row.getPhysicalNumberOfCells() >= 3) {
+                    specialCorridors.add(new Corridor(
+                            row.getCell(0).getStringCellValue(),
+                            row.getCell(2).getStringCellValue(),
+                            row.getCell(1).getStringCellValue(),
+                            row.getCell(3).getStringCellValue())
+                    );
+                } else
+                    specialCorridors.add(new Corridor(row.getCell(0).getStringCellValue(),
+                            row.getCell(1).getStringCellValue()));
             }
 
 
-            XSSFSheet sheet5 = data.getSheetAt(4);
+            XSSFSheet sheet5 = data.getSheetAt(3);
             for (int i = 0; i < sheet5.getLastRowNum(); i++) {
                 XSSFRow row = sheet5.getRow(i + 1);
                 Block outputBlock = new Block(row.getCell(2).getStringCellValue(),
@@ -432,7 +489,7 @@ public class Assignment {
                 if (row.getCell(1).getStringCellValue().equals(correctOriginName)) {
                     boolean check = true;
                     for (int j = 5; j < row.getLastCellNum(); j++) {
-                        if (result[3].equals(row.getCell(j).getStringCellValue()))
+                        if (result[2].equals(row.getCell(j).getStringCellValue()))
                             check = false;
                     }
                     if (check) {
@@ -443,11 +500,11 @@ public class Assignment {
                 if (row.getCell(1).getStringCellValue().equals(correctDestinationName)) {
                     boolean check = true;
                     for (int j = 5; j < row.getLastCellNum(); j++) {
-                        if (result[4].equals(row.getCell(j).getStringCellValue()))
+                        if (result[3].equals(row.getCell(j).getStringCellValue()))
                             check = false;
                     }
                     if (check) {
-                        row.createCell(row.getLastCellNum()).setCellValue(result[4]);
+                        row.createCell(row.getLastCellNum()).setCellValue(result[3]);
                     }
                     finishedWithDestination = true;
                 }
@@ -460,6 +517,19 @@ public class Assignment {
                 if (station.getName().equals(correctOriginName)) {
                     boolean check = true;
                     for (String name : station.getAlterNames()) {
+                        if (result[2].equals(name)) {
+                            check = false;
+                            break;
+                        }
+                    }
+                    if (check) {
+                        station.getAlterNames().add(result[2]);
+                        break;
+                    }
+                }
+                if (station.getName().equals(correctDestinationName)) {
+                    boolean check = true;
+                    for (String name : station.getAlterNames()) {
                         if (result[3].equals(name)) {
                             check = false;
                             break;
@@ -467,19 +537,6 @@ public class Assignment {
                     }
                     if (check) {
                         station.getAlterNames().add(result[3]);
-                        break;
-                    }
-                }
-                if (station.getName().equals(correctDestinationName)) {
-                    boolean check = true;
-                    for (String name : station.getAlterNames()) {
-                        if (result[4].equals(name)) {
-                            check = false;
-                            break;
-                        }
-                    }
-                    if (check) {
-                        station.getAlterNames().add(result[4]);
                         break;
                     }
                 }
@@ -551,41 +608,41 @@ public class Assignment {
                 for (int i = 0; i < freeSpaceCorners; i++) {
                     row = sheet.getRow((i) + 4);
                     gTip.getFreeSpace()[i][0] =
-                            (float) row.getCell(1).getNumericCellValue() / 10;
+                            (float) row.getCell(1).getNumericCellValue();
                     gTip.getFreeSpace()[i][1] =
-                            (float) (row.getCell(0).getNumericCellValue() / 10);
+                            (float) (row.getCell(0).getNumericCellValue());
 
                     if (i == 0) {
                         gTip.getFreeSpace()[2 * freeSpaceCorners][0] =
-                                (float) row.getCell(1).getNumericCellValue() / 10;
+                                (float) row.getCell(1).getNumericCellValue();
                         gTip.getFreeSpace()[2 * freeSpaceCorners][1] =
-                                (float) (row.getCell(0).getNumericCellValue() / 10);
+                                (float) (row.getCell(0).getNumericCellValue());
                     }
 
                     gTip.getFreeSpace()[2 * freeSpaceCorners - i - 1][0] =
-                            (float) row.getCell(2).getNumericCellValue() / 10;
+                            (float) row.getCell(2).getNumericCellValue();
                     gTip.getFreeSpace()[2 * freeSpaceCorners - i - 1][1] =
-                            (float) (row.getCell(0).getNumericCellValue() / 10);
+                            (float) (row.getCell(0).getNumericCellValue());
                 }
 
                 for (int i = 0; i < allowedSpaceCorners; i++) {
                     row = sheet.getRow((i) + 4);
                     gTip.getAllowedSpace()[i][0] =
-                            (float) row.getCell(5).getNumericCellValue() / 10;
+                            (float) row.getCell(5).getNumericCellValue();
                     gTip.getAllowedSpace()[i][1] =
-                            (float) (row.getCell(4).getNumericCellValue() / 10);
+                            (float) (row.getCell(4).getNumericCellValue());
 
                     if (i == 0) {
                         gTip.getAllowedSpace()[2 * allowedSpaceCorners][0] =
-                                (float) row.getCell(5).getNumericCellValue() / 10;
+                                (float) row.getCell(5).getNumericCellValue();
                         gTip.getAllowedSpace()[2 * allowedSpaceCorners][1] =
-                                (float) (row.getCell(4).getNumericCellValue() / 10);
+                                (float) (row.getCell(4).getNumericCellValue());
                     }
 
                     gTip.getAllowedSpace()[2 * allowedSpaceCorners - i - 1][0] =
-                            (float) row.getCell(6).getNumericCellValue() / 10;
+                            (float) row.getCell(6).getNumericCellValue();
                     gTip.getAllowedSpace()[2 * allowedSpaceCorners - i - 1][1] =
-                            (float) (row.getCell(4).getNumericCellValue() / 10);
+                            (float) (row.getCell(4).getNumericCellValue());
                 }
                 gTips.add(gTip);
             }
@@ -595,6 +652,54 @@ public class Assignment {
             e.printStackTrace();
         }
     }
+
+    public String[] manageNames(String[] result) {
+
+        FileOutputStream file = null;
+        XSSFWorkbook data = null;
+        try (FileInputStream dataFile = new FileInputStream("./Data.xlsx")) {
+            data = new XSSFWorkbook(dataFile);
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+
+        try {
+            if (nameIsNotOkay(result[0]) || nameIsNotOkay(result[1])) {
+                namesCheck = false;
+                return result;
+            }
+
+            result[0] = findName(result[0])[0];
+            result[1] = findName(result[1])[0];
+            if (!namesCheck) {
+                //we update alter names if only the station name is not duplicate (special)
+                if (!stations.get(Integer.parseInt(findName(result[0])[1])).isSpecialTag() ||
+                        !stations.get(Integer.parseInt(findName(result[1])[1])).isSpecialTag()
+                ) {
+                    updateAlterNames(result, data);
+                    (new File("./Data.xlsx")).delete();
+                    file = new FileOutputStream("./Data.xlsx");
+                    data.write(file);
+                    file.flush();
+                    file.close();
+                    namesCheck = true;
+                }
+            }
+        } catch (IOException | NullPointerException |
+                IllegalStateException e) {
+            namesCheck = false;
+        } finally {
+            if (data != null) {
+                try {
+                    data.close();
+                } catch (IOException e) {
+                    namesCheck = false;
+                }
+            }
+        }
+        return result;
+    }
+
 }
 
 

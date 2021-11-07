@@ -13,8 +13,10 @@ module ir.rai {
     requires cplex;
     requires java.desktop;
     requires org.jfree.fxgraphics2d;
+    requires javafx.swing;
 
     opens ir.rai to javafx.fxml;
 
     exports ir.rai;
+    exports ir.rai.Data;
 }
