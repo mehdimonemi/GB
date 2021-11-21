@@ -17,7 +17,6 @@ Gabari/cplex
 Gabari/fx
 Gabari/jdk
 Gabari/GB.jar
-Gabari/*.xlsx
 
 # Package Files #
 *.jar

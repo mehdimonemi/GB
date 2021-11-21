@@ -444,12 +444,19 @@ public class Assignment {
                 XSSFRow row = sheet4.getRow(j + 1);
 
                 if (row.getPhysicalNumberOfCells() >= 3) {
-                    specialCorridors.add(new Corridor(
-                            row.getCell(0).getStringCellValue(),
-                            row.getCell(2).getStringCellValue(),
-                            row.getCell(1).getStringCellValue(),
-                            row.getCell(3).getStringCellValue())
-                    );
+                    if (row.getCell(2).getStringCellValue().equals("یک بلاک"))
+                        specialCorridors.add(new Corridor(
+                                row.getCell(0).getStringCellValue(),
+                                row.getCell(1).getStringCellValue(),
+                                row.getCell(2).getBooleanCellValue()
+                        ));
+                    else
+                        specialCorridors.add(new Corridor(
+                                row.getCell(0).getStringCellValue(),
+                                row.getCell(2).getStringCellValue(),
+                                row.getCell(1).getStringCellValue(),
+                                row.getCell(3).getStringCellValue())
+                        );
                 } else
                     specialCorridors.add(new Corridor(row.getCell(0).getStringCellValue(),
                             row.getCell(1).getStringCellValue()));

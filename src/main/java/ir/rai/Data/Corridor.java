@@ -5,6 +5,7 @@ public class Corridor {
     private String realOrigin;
     private String destination;
     private String realDestination;
+    private boolean singleBlock = false;
 
     public Corridor(String origin, String destination) {
         this.origin = origin;
@@ -18,6 +19,12 @@ public class Corridor {
         this.realOrigin = realOrigin;
         this.destination = destination;
         this.realDestination = realDestination;
+    }
+
+    public Corridor(String origin, String destination, boolean singleBlock) {
+        this.origin = origin;
+        this.destination = destination;
+        this.singleBlock = singleBlock;
     }
 
     public String getOrigin() {
