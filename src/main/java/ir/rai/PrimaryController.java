@@ -126,8 +126,6 @@ public class PrimaryController {
         coordinationBox.setValue("XY Coordination");
         coordinationBox.valueProperty().addListener(observable -> coordinationBox.getValue());
 
-        corridors.getItems().add("No exception");
-        corridors.getCheckModel().check(0);
         for (Corridor corridor : specialCorridors) {
             corridors.getItems().add(corridor.toString());
         }

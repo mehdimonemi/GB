@@ -26,7 +26,7 @@ public class Assignment {
     public static XSSFRow row;
 
     public ArrayList<Station> stations = null;
-    public ArrayList<Block> blocks = null;
+    public static ArrayList<Block> blocks = null;
     public ArrayList<Block> outputBlocks = null;
     Commodity commodity = null;
     public TreeSet<String> districts = null;
@@ -61,7 +61,7 @@ public class Assignment {
             ArrayList<Corridor> corridors = new ArrayList<>();
             for (String path : selectedCorridors) {
                 for (Corridor corridor : specialCorridors) {
-                    if (corridor.toString().equals(path) && !path.equals("No exception")) {
+                    if (corridor.toString().equals(path)) {
                         corridors.add(corridor);
                     }
                 }
@@ -74,20 +74,28 @@ public class Assignment {
                     ArrayList<Block> specialBlocks = new ArrayList<>();
                     for (int i = 0; i < corridors.size(); i++) {
                         Commodity path1;
-                        if ((x >> i) % 2 == 0)
-                            path1 = new Commodity(corridors.get(i).getRealOrigin(), corridors.get(i).getRealDestination(),
-                                    stations);
-                        else
-                            path1 = new Commodity(corridors.get(i).getRealDestination(), corridors.get(i).getRealOrigin(),
-                                    stations);
+                        if (corridors.get(i).isSingleBlock()) {
+                            if ((x >> i) % 2 == 0)
+                                specialBlocks.add(Block.get(corridors.get(i).getOrigin(), corridors.get(i).getDestination()));
+                            else
+                                specialBlocks.add(Block.get(corridors.get(i).getDestination(), corridors.get(i).getOrigin()));
 
-                        ArrayList<Block> temp = new ArrayList<>(findBlocks(blocks, stations,
-                                path1, path1.getOriginId(), path1.getDestinationId(),
-                                path1.getOrigin(), path1.getDestination(), model, new ArrayList<>(),
-                                new Block(), true));
-                        if (temp.size() == 0)
-                            continue mainLoop;
-                        specialBlocks.addAll(temp);
+                        } else {
+                            if ((x >> i) % 2 == 0)
+                                path1 = new Commodity(corridors.get(i).getRealOrigin(), corridors.get(i).getRealDestination(),
+                                        stations);
+                            else
+                                path1 = new Commodity(corridors.get(i).getRealDestination(), corridors.get(i).getRealOrigin(),
+                                        stations);
+
+                            ArrayList<Block> temp = new ArrayList<>(findBlocks(blocks, stations,
+                                    path1, path1.getOriginId(), path1.getDestinationId(),
+                                    path1.getOrigin(), path1.getDestination(), model, new ArrayList<>(),
+                                    new Block(), true));
+                            if (temp.size() == 0)
+                                continue mainLoop;
+                            specialBlocks.addAll(temp);
+                        }
                     }
 
                     previousCommodity = new Commodity();
@@ -264,7 +272,6 @@ public class Assignment {
                         if (System.currentTimeMillis() > stopTime) throw new Exception();
                     }
                 } catch (Exception e) {
-                    System.out.println("time's up");
                     if (previousCommodity.getBlocks().size() > 0)
                         commodity = previousCommodity;
 
@@ -282,7 +289,6 @@ public class Assignment {
             } else {
                 commodity.setDistance(Double.MAX_VALUE);
                 commodity.setBlocks(new ArrayList<>());
-                System.out.println("No path");
                 if (exceptions.size() > 0) {
                     if (previousCommodity.getBlocks().size() > 0)
                         commodity = previousCommodity;
@@ -448,7 +454,7 @@ public class Assignment {
                         specialCorridors.add(new Corridor(
                                 row.getCell(0).getStringCellValue(),
                                 row.getCell(1).getStringCellValue(),
-                                row.getCell(2).getBooleanCellValue()
+                                row.getCell(2).getStringCellValue()
                         ));
                     else
                         specialCorridors.add(new Corridor(

@@ -2,6 +2,8 @@ package ir.rai.Data;
 
 import java.util.ArrayList;
 
+import static ir.rai.Data.Assignment.blocks;
+
 /**
  * Created by Monemi_M on 10/07/2017.
  */
@@ -63,6 +65,15 @@ public class Block {
 
     public Block() {
 
+    }
+
+    public static Block get(String origin, String destination) {
+        for(Block block: blocks){
+            if (origin.equals(block.getOrigin()) && destination.equals(block.getDestination())){
+                return block;
+            }
+        }
+        return null;
     }
 
     public int getId() {

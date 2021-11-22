@@ -21,9 +21,20 @@ public class Corridor {
         this.realDestination = realDestination;
     }
 
-    public Corridor(String origin, String destination, boolean singleBlock) {
+    public Corridor(String origin, String destination, String singleBlock) {
         this.origin = origin;
         this.destination = destination;
+        if (singleBlock.equals("یک بلاک"))
+            this.singleBlock = true;
+        this.realOrigin = origin;
+        this.realDestination = destination;
+    }
+
+    public boolean isSingleBlock() {
+        return singleBlock;
+    }
+
+    public void setSingleBlock(boolean singleBlock) {
         this.singleBlock = singleBlock;
     }
 
