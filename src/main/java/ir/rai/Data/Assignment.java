@@ -488,8 +488,8 @@ public class Assignment {
 
     private void updateAlterNames(String[] result, XSSFWorkbook workBook) {
 
-        String correctOriginName = findName(result[1])[0];
-        String correctDestinationName = findName(result[2])[0];
+        String correctOriginName = findName(result[0])[0];
+        String correctDestinationName = findName(result[1])[0];
         try {
 
             XSSFSheet sheet1 = workBook.getSheetAt(0);
@@ -506,7 +506,7 @@ public class Assignment {
                             check = false;
                     }
                     if (check) {
-                        row.createCell(row.getLastCellNum()).setCellValue(result[3]);
+                        row.createCell(row.getLastCellNum()).setCellValue(result[2]);
                     }
                     finishedWithOrigin = true;
                 }

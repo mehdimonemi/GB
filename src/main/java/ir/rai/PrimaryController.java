@@ -136,6 +136,9 @@ public class PrimaryController {
         wagonHeight.getItems().addAll("0", "800", "1250", "1300");
         wagonHeight.setValue("0");
         wagonHeight.valueProperty().addListener(observable -> coordinationBox.getValue());
+        wagonHeight.getEditor().textProperty().addListener((obs, oldText, newText) -> {
+            wagonHeight.setValue(newText);
+        });
 
         deleteData.setOnAction(event -> inputTable.getItems().clear());
         addButton.setOnAction(actionEvent ->

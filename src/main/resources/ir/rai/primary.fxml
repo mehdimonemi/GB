@@ -49,7 +49,7 @@
 
                 <Label text="wagon height   " id="myLabel" GridPane.columnIndex="0"
                        GridPane.rowIndex="1"/>
-                <ComboBox fx:id="wagonHeight" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                <ComboBox fx:id="wagonHeight" editable="true" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
 
                 <Label text="Output:" id="myLabel" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
                 <TextField fx:id="outDirectory" minWidth="100"
