@@ -14,6 +14,7 @@ module ir.rai {
     requires java.desktop;
     requires org.jfree.fxgraphics2d;
     requires javafx.swing;
+    requires batik.transcoder;
 
     opens ir.rai to javafx.fxml;
 

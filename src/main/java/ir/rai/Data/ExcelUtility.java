@@ -51,14 +51,15 @@ public class ExcelUtility {
     }
 
     public static void addToExcel(String outputFileLocation, int rowNumber,
-                            ArrayList<Coordinate[]> transportable, double outOfAllow,
-                            double outOffree, int gTipNumber, String OD) {
+                                  ArrayList<Coordinate[]> transportable, double outOfAllow,
+                                  double outOffree, int gTipNumber, String OD) {
         FileOutputStream outFile;
 
         try (
                 FileInputStream inFile = new FileInputStream(outputFileLocation);
                 XSSFWorkbook workbook = new XSSFWorkbook(inFile);
         ) {
+
             XSSFSheet sheet = workbook.getSheet("خروجی");
             XSSFRow row = sheet.createRow(rowNumber);
 
@@ -74,19 +75,27 @@ public class ExcelUtility {
             if (gTipNumber >= 0) {
                 GTip gTip = gTips.get(gTipNumber);
                 setCell(row.createCell(1), gTip.getName(), style);
-                setCell(row.createCell(2), transportable.get(1).length == 0 ? "قابل عبور" : "غیر قابل عبور", style);
-                setCell(row.createCell(3), outOfAllow, style);
-                setCell(row.createCell(4), transportable.get(2).length == 0 ? "قابل عبور" : "غیر قابل عبور", style);
-                setCell(row.createCell(5), outOffree, style);
+                if (outOfAllow == 0) {
+                    setCell(row.createCell(2), "قابل عبور", style);
+                } else if (outOffree == 0) {
+                    setCell(row.createCell(2), "غیر قابل عبور", style);
+                    setCell(row.createCell(3), outOfAllow, style);
+                    setCell(row.createCell(4), "قابل عبور", style);
+                } else {
+                    setCell(row.createCell(2), "غیر قابل عبور", style);
+                    setCell(row.createCell(3), outOfAllow, style);
+                    setCell(row.createCell(4), "غیر قابل عبور", style);
+                    setCell(row.createCell(5), outOffree, style);
+                    setCell(row.createCell(6), "غیر قابل عبور", style);
+                }
             } else {
                 setCell(row.createCell(1), "نامشخص", style);
                 setCell(row.createCell(2), "", style);
                 setCell(row.createCell(3), "", style);
                 setCell(row.createCell(4), "", style);
                 setCell(row.createCell(5), "", style);
+                setCell(row.createCell(6), "", style);
             }
-
-
             outFile = new FileOutputStream(outputFileLocation);
             workbook.write(outFile);
 

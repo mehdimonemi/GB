@@ -2,9 +2,7 @@ package ir.rai;
 
 import com.jsevy.jdxf.DXFDocument;
 import com.jsevy.jdxf.DXFGraphics;
-import ir.rai.Data.Assignment;
-import ir.rai.Data.Chart;
-import ir.rai.Data.Corridor;
+import ir.rai.Data.*;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -30,6 +28,7 @@ import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
+import javafx.scene.text.TextAlignment;
 import javafx.scene.transform.Transform;
 import javafx.stage.DirectoryChooser;
 import javafx.util.Callback;
@@ -92,10 +91,11 @@ public class PrimaryController {
     TableView<MyCoordinate> inputTable;
     TableView<Section> pathTable;
     TableView<String> districtTable;
+    TableView<Result> overallTable;
     Assignment assignment;
     public static ArrayList<MyCoordinate> realData;
-    private ObservableList<MyCoordinate> data =
-            FXCollections.observableArrayList();
+    private ObservableList<MyCoordinate> data = FXCollections.observableArrayList();
+    ObservableList<Result> resultData;
 
     public static ArrayList<Corridor> specialCorridors = new ArrayList<>();
     public static ArrayList<Tab> tabList;
@@ -141,8 +141,11 @@ public class PrimaryController {
         });
 
         deleteData.setOnAction(event -> inputTable.getItems().clear());
-        addButton.setOnAction(actionEvent ->
-                data.add(new MyCoordinate(Float.parseFloat(add1Para.getText()), Float.parseFloat(add2Para.getText()))));
+        addButton.setOnAction(actionEvent -> {
+            data.add(new MyCoordinate(Float.parseFloat(add1Para.getText()), Float.parseFloat(add2Para.getText())));
+            add1Para.setText("");
+            add2Para.setText("");
+        });
     }
 
     private void configureLoadFile() {
@@ -261,6 +264,96 @@ public class PrimaryController {
         addIfNotPresent(inputTable.getStyleClass(), TABLE_GRID_LINES);
     }
 
+    private void configureOverallTable() {
+        overallTable = new TableView<>();
+        overallTable.setId("overallTable");
+        overallTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        overallTable.setEditable(false);
+        overallTable.getSelectionModel().setCellSelectionEnabled(false);
+
+        TableColumn<Result, String> column1 = new TableColumn<>("مسیر");
+        TableColumn<Result, String> column2 = new TableColumn<>("تیب گاباری");
+        TableColumn<Result, String> column3 = new TableColumn<>("قابلیت عبور از فضای مجاز");
+        TableColumn<Result, String> column4 = new TableColumn<>("اندازه ورود به فضای آزاد");
+        TableColumn<Result, String> column5 = new TableColumn<>("قابلیت عبور از فضای آزاد");
+        TableColumn<Result, String> column6 = new TableColumn<>("اندازه ورود به فضای سازه");
+        TableColumn<Result, String> column7 = new TableColumn<>("قابلیت عبور از فضای سازه");
+
+        column1.setCellValueFactory(new PropertyValueFactory<>("section"));
+        column2.setCellValueFactory(new PropertyValueFactory<>("gabariKind"));
+        column3.setCellValueFactory(new PropertyValueFactory<>("allowedSpace"));
+        column4.setCellValueFactory(new PropertyValueFactory<>("inFree"));
+        column5.setCellValueFactory(new PropertyValueFactory<>("freeSpace"));
+        column6.setCellValueFactory(new PropertyValueFactory<>("inStructure"));
+        column7.setCellValueFactory(new PropertyValueFactory<>("structureSpace"));
+        overallTable.getColumns().addAll(column7, column6, column5, column4, column3, column2, column1);
+
+        overallTable.setRowFactory(tv -> new TableRow<Result>() {
+            @Override
+            protected void updateItem(Result item, boolean empty) {
+                super.updateItem(item, empty);
+                if (item == null)
+                    setStyle("");
+                else if (item.getInFree().equals(""))
+                    setStyle("-fx-background-color: rgba(107,152,112,1);");
+                else if (item.getInStructure().equals(""))
+                    setStyle("-fx-background-color: rgba(238,230,0,1);");
+                else
+                    setStyle("-fx-background-color: rgba(213,103,103,1);");
+            }
+        });
+
+        makeHeaderWrappable(column1);
+        makeHeaderWrappable(column2);
+        makeHeaderWrappable(column3);
+        makeHeaderWrappable(column4);
+        makeHeaderWrappable(column5);
+        makeHeaderWrappable(column6);
+        makeHeaderWrappable(column7);
+
+        column1.setPrefWidth(95);
+        column2.setPrefWidth(95);
+        column3.setPrefWidth(95);
+        column4.setPrefWidth(95);
+        column5.setPrefWidth(95);
+        column6.setPrefWidth(95);
+        column7.setPrefWidth(95);
+
+        column1.setSortable(false);
+        column2.setSortable(false);
+        column3.setSortable(false);
+        column4.setSortable(false);
+        column5.setSortable(false);
+        column6.setSortable(false);
+        column7.setSortable(false);
+
+
+        overallTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        addIfNotPresent(overallTable.getStyleClass(), ALTERNATING_ROW_COLORS);
+        addIfNotPresent(overallTable.getStyleClass(), TABLE_GRID_LINES);
+
+        overallTable.setItems(resultData);
+    }
+
+    private void makeHeaderWrappable(TableColumn col) {
+        Label label = new Label(col.getText());
+        label.setStyle("-fx-padding: 8px;");
+        label.setWrapText(true);
+        label.setId("wrappableLabel");
+        label.setAlignment(Pos.CENTER);
+        label.setTextAlignment(TextAlignment.CENTER);
+
+        StackPane stack = new StackPane();
+        stack.getChildren().add(label);
+        stack.setId("wrappableStack");
+        stack.setAlignment(Pos.CENTER);
+
+        stack.prefWidthProperty().bind(col.widthProperty().subtract(5));
+        label.prefWidthProperty().bind(stack.prefWidthProperty());
+        col.setText(null);
+        col.setGraphic(stack);
+    }
+
     private void buildFirstTab(ArrayList<Section> sections, ArrayList<String> districts, Tab tab) {
         VBox vBox = new VBox();
         vBox.setMinWidth(700);
@@ -286,6 +379,33 @@ public class PrimaryController {
         tab.setId("firstTab");
         tab.setContent(vBox);
         tabList.add(tab);
+    }
+
+    private void buildOverallTab(Tab tab) {
+        VBox vBox = new VBox();
+        vBox.setMinWidth(800);
+        vBox.setPadding(new Insets(10, 10, 10, 10));
+        vBox.setAlignment(Pos.TOP_CENTER);
+        vBox.setSpacing(20);
+        HBox hBox = new HBox();
+        hBox.setAlignment(Pos.CENTER);
+        hBox.setMinWidth(800);
+        hBox.setSpacing(20);
+        Font.loadFont("file:resources/Gandom-FD.ttf", 45);
+        vBox.setStyle("-fx-font: 12px 'Gandom'");
+
+        Label header = new Label("خلاصه وضعیت بار/واگن در مبدا-مقصد وارد شده:");
+        configureOverallTable();
+        hBox.getChildren().addAll(overallTable);
+        vBox.getChildren().addAll(header, hBox);
+
+        tab.setClosable(false);
+        Label label = new Label("خلاصه ارزیابی");
+        label.setRotate(90);
+        tab.setGraphic(new Group(label));
+        tab.setId("firstTab");
+        tab.setContent(vBox);
+        tabList.add(1, tab);
     }
 
     private TableView<Section> configurePathSectionsTable(ArrayList<Section> sections) {
@@ -351,6 +471,7 @@ public class PrimaryController {
                     protected Object call() {
                         realData = new ArrayList<>();
                         tabList = new ArrayList<>();
+                        resultData = FXCollections.observableArrayList();
                         deleteFiles(outputDXFLocation);
 
                         if (coordinationBox.getValue().equals("Width and Height")) {
@@ -385,7 +506,7 @@ public class PrimaryController {
                             if ((Integer) pair.getValue() >= 1) {
                                 transportable = analyzeGabari(gTips.get((Integer) pair.getValue() - 1));
 
-                                //check whether we have a result from the analyze
+                                //check whether we have a result from the analysis
                                 if (transportable.size() == 0) {
                                     drawGabari(pair.getKey().toString(), transportable, ((Integer) pair.getValue() - 1),
                                             outOfAllow, outOfFree, tab);
@@ -404,6 +525,30 @@ public class PrimaryController {
                                         outOfFree,
                                         ((Integer) pair.getValue() - 1),
                                         pair.getKey().toString());
+                                if (outOfAllow == 0)
+                                    resultData.add(new Result(
+                                            pair.getKey().toString(),
+                                            gTips.get(((Integer) pair.getValue() - 1)).getName(),
+                                            "قابل عبور"
+                                    ));
+                                else if (outOfFree == 0)
+                                    resultData.add(new Result(
+                                            pair.getKey().toString(),
+                                            gTips.get(((Integer) pair.getValue() - 1)).getName(),
+                                            "غیر قابل عبور",
+                                            String.valueOf(Math.round(outOfAllow * 100.0) / 100.0),
+                                            "قابل عبور"
+                                    ));
+                                else
+                                    resultData.add(new Result(
+                                            pair.getKey().toString(),
+                                            gTips.get(((Integer) pair.getValue() - 1)).getName(),
+                                            "غیر قابل عبور",
+                                            String.valueOf(Math.round(outOfAllow * 100.0) / 100.0),
+                                            "غیر قابل عبور",
+                                            String.valueOf(Math.round(outOfFree * 100.0) / 100.0),
+                                            "غیر قابل عبور"
+                                    ));
                             } else {
                                 addToExcel(outputFileLocation, rowCounter, null, 0, 0,
                                         ((Integer) pair.getValue() - 1), pair.getKey().toString());
@@ -414,6 +559,7 @@ public class PrimaryController {
                             createDXF(transportable, ((Integer) pair.getValue() - 1), pair.getKey().toString());
                             tabList.add(tab);
                         }
+                        buildOverallTab(new Tab());
                         return null;
                     }
                 };
@@ -442,7 +588,7 @@ public class PrimaryController {
         });
     }
 
-    private void createJPG(VBox tab, Node chartCanvas, String sectionName) {
+    private void createJPG(VBox tab, String sectionName) {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem item1 = new MenuItem("Save as Png");
         contextMenu.getItems().add(item1);
@@ -537,10 +683,11 @@ public class PrimaryController {
 
             setCell(row.createCell(0), "مسیر", style);
             setCell(row.createCell(1), "تیب گاباری", style);
-            setCell(row.createCell(2), "قابلیت عبور فضای مجاز", style);
+            setCell(row.createCell(2), "قابلیت عبور از فضای مجاز", style);
             setCell(row.createCell(3), "اندازه ورود به فضای آزاد", style);
-            setCell(row.createCell(4), "قابلیت عبور از فضای غیرمجاز", style);
-            setCell(row.createCell(5), "اندازه ورود به فضای غیرمجاز", style);
+            setCell(row.createCell(4), "قابلیت عبور از فضای آزاد", style);
+            setCell(row.createCell(5), "اندازه ورود به فضای سازه", style);
+            setCell(row.createCell(6), "قابلیت عبور از فضای سازه", style);
 
             sheet.setColumnWidth(0, 21 * 256);
             sheet.setColumnWidth(1, 21 * 256);
@@ -548,6 +695,7 @@ public class PrimaryController {
             sheet.setColumnWidth(3, 21 * 256);
             sheet.setColumnWidth(4, 21 * 256);
             sheet.setColumnWidth(5, 21 * 256);
+            sheet.setColumnWidth(6, 21 * 256);
 
             outFile = new FileOutputStream(outputFileLocation);
             workbook.write(outFile);
@@ -595,11 +743,11 @@ public class PrimaryController {
                 header.add(new Label(gTip.getName()), 1, 1);
 
                 header.add(new Label("اندازه ورود به فضای آزاد"), 0, 2);
-                header.add(new Label(new DecimalFormat("##.00").format(outOfAllow) + " " + "سانتی متر"),
+                header.add(new Label(new DecimalFormat("##.00").format(outOfAllow) + " " + "میلی متر"),
                         1, 2);
 
-                header.add(new Label("اندازه ورود به فضای غیر مجاز"), 0, 3);
-                header.add(new Label(new DecimalFormat("##.00").format(outOfFree) + " " + "سانتی متر"),
+                header.add(new Label("اندازه ورود به فضای سازه"), 0, 3);
+                header.add(new Label(new DecimalFormat("##.00").format(outOfFree) + " " + "میلی متر"),
                         1, 3);
 
                 int[] coloringSchema = new int[3];
@@ -676,7 +824,7 @@ public class PrimaryController {
         } else {
             parent.getChildren().addAll(header);
         }
-        createJPG(parent, chartCanvas, sectionName);
+        createJPG(parent, sectionName);
         tab.setContent(parent);
     }
 
@@ -1051,5 +1199,58 @@ public class PrimaryController {
             // if the file is renamed
             return true;
         } else return !file.exists() && !file.isDirectory();
+    }
+
+    public void showAllGabari() {
+        if (!isFileClose("./temp.xlsx")) {
+            serviceResult.setStyle("-fx-text-fill: red");
+            serviceResult.setText("Temp excel file is open. Please Close it First and retry");
+        } else {
+            deleteIfFileExist("./temp.xlsx");
+
+            FileOutputStream outFile;
+
+            try (
+                    FileInputStream inFile = new FileInputStream("./Data.xlsx");
+                    XSSFWorkbook inWorkbook = new XSSFWorkbook(inFile);
+                    XSSFWorkbook outWorkbook = new XSSFWorkbook();
+            ) {
+                XSSFSheet inSheet = inWorkbook.getSheetAt(3);
+
+                XSSFSheet outSheet = outWorkbook.createSheet("خلاصه گابار بلاک ها");
+                outSheet.setRightToLeft(true);
+
+                int counter = 1;
+                for (Block ignored : outputBlocks) {
+                    row = inSheet.getRow(counter);
+                    Block block = Block.get(row.getCell(2).getStringCellValue(),
+                            row.getCell(3).getStringCellValue());
+
+                    String gabari;
+                    if (block == null)
+                        gabari = "گاباری ناشناخته است";
+                    else
+                        gabari = block.getGabariCode() - 1 < 0 ? "گاباری ناشناخته است" :
+                                gTips.get(block.getGabariCode() - 1).getName();
+
+                    setCell(
+                            row.getCell(4),
+                            gabari,
+                            setStyle(inWorkbook, "B Zar", new Color(255, 255, 255, 0))
+                    );
+                    counter++;
+                }
+
+                CopySheet newCopy = new CopySheet();
+                newCopy.copySheets(outSheet, inSheet, true);
+
+                outFile = new FileOutputStream("./temp.xlsx");
+                outWorkbook.write(outFile);
+
+                Desktop.getDesktop().open(new File("./temp.xlsx"));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

@@ -1,12 +1,18 @@
 package ir.rai;
 
+import ir.rai.Data.BufferedImageTranscoder;
 import javafx.application.Application;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.stage.Stage;
 import jfxtras.styles.jmetro.JMetro;
 import jfxtras.styles.jmetro.Style;
+import org.apache.batik.transcoder.TranscoderException;
+import org.apache.batik.transcoder.TranscoderInput;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,6 +29,24 @@ public class App extends Application {
         System.setProperty("prism.lcdtext", "false");
         System.setProperty("awt.useSystemAAFontSettings","on");
         scene = new Scene(loadFXML("primary"), 900, 600);
+
+        ImageView githubImage = new ImageView();
+        BufferedImageTranscoder transcoder = new BufferedImageTranscoder();
+        try (InputStream file = App.class.getResourceAsStream("icon.svg")) {
+            TranscoderInput transIn = new TranscoderInput(file);
+            try {
+                transcoder.transcode(transIn, null);
+                Image img = SwingFXUtils.toFXImage(transcoder.getBufferedImage(), null);
+                githubImage.setImage(img);
+            } catch (TranscoderException ex) {
+                ex.printStackTrace();
+            }
+        }
+        catch (IOException io) {
+            io.printStackTrace();
+        }
+
+        stage.getIcons().add(githubImage.getImage());
         stage.setMaximized(true);
         stage.setScene(scene);
         JMetro jMetro = new JMetro(Style.LIGHT);

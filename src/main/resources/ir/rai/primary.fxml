@@ -19,7 +19,10 @@
             </TabPane>
         </Pane>
 
-        <VBox spacing="5">
+        <VBox spacing="5" alignment="center">
+            <Button id="allGabari" onAction="#showAllGabari" text="نمایش گاباری تمامی بلاک های شبکه"/>
+            <Separator/>
+            <Label id="guide" text="ورود اطلاعات"/>
             <GridPane hgap="10" vgap="2">
                 <Label text="Origin" GridPane.columnIndex="0" GridPane.rowIndex="0" id="myLabel"/>
                 <TextField fx:id="origin" GridPane.columnIndex="1" GridPane.rowIndex="0"
@@ -63,7 +66,7 @@
 
             <ProgressBar fx:id="progressBar" visible="false"/>
             <Label fx:id="serviceResult"/>
-            <Label text="All numbers in tables and charts are in Millimeter unit." id="myLabel"/>
+            <Label text="All numbers in tables and charts are in Millimeter unit." id="sign"/>
             <Label text="Developed By @ImaH" id="sign"/>
         </VBox>
     </SplitPane>

@@ -10,6 +10,7 @@
     progress-bar-color: #35b840;
 }
 
+/*Tables*/
 #pathTable .column-header .label {
     -fx-background-color: table-column-color;
     -fx-alignment: center;
@@ -27,6 +28,33 @@
     -fx-padding: 0.05em 0.5em 0.05em 0.5em;
 }
 
+#overallTable .column-header .label {
+    -fx-background-color: table-column-color;
+    -fx-padding: 0 0 0 0;
+    -fx-alignment: center;
+    -fx-font-weight: Bold;
+    -fx-font-size: 10;
+}
+
+#overallTable .column-header {
+    -fx-background-color: table-column-color;
+    -fx-padding: 0 0 0 0;
+}
+
+#overallTable .table-cell {
+    -fx-padding: 0.05em 0.5em 0.05em 0.5em;
+    -fx-font-size: 10;
+    -fx-alignment: Center;
+}
+
+#wrappableLabel .label {
+    -fx-padding: 0;
+}
+
+#wrappableStack {
+    -fx-padding: 0;
+}
+
 .table-view .column-header .label {
     -fx-background-color: table-column-color;
     -fx-alignment: center;
@@ -37,6 +65,11 @@
     -fx-background-color: table-column-color;
 }
 
+.table-row-cell:empty:odd, .table-row-cell:empty:even {
+    -fx-background-color: transparent;
+}
+
+/*Tab Pane*/
 .tab-pane .tab-header-area .tab {
     -fx-pref-height: 150;
     -fx-pref-width: 30;
@@ -71,7 +104,7 @@
 }
 
 #yellowTab {
-    -fx-background-color: #cece5d;
+    -fx-background-color: #EEE600;
 }
 
 #redTab:selected {
@@ -94,6 +127,7 @@
     -fx-background-color: #aad5d4;
 }
 
+/*Progress Bar*/
 .progress-bar:indeterminate .dot_1 {
     -fx-background-color: progress-bar-color;
 }
@@ -114,16 +148,13 @@
     -fx-background-color: derive(progress-bar-color, -60%);
 }
 
-.table-row-cell:empty:odd, .table-row-cell:empty:even {
-    -fx-background-color: transparent;
-}
-
+/*Texts and Labels*/
 .text {
     -fx-font-smoothing-type: lcd
 }
 
 #myLabel .text {
-    -fx-font-size: 12;
+    -fx-font-size: 11;
 }
 
 #sign .text {
@@ -136,4 +167,14 @@
 
 .button .text {
     -fx-padding: 0.2em 0.5em 0.2em 0.5em;
+}
+
+#guide .text {
+    -fx-font-size: 12;
+    -fx-font-family: Gandom;
+}
+
+#allGabari .text {
+    -fx-font-size: 11;
+    -fx-font-family: Gandom;
 }
