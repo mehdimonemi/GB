@@ -440,7 +440,10 @@ public class Assignment {
                         (int) row.getCell(5).getNumericCellValue(),
                         2,
                         ((row.getCell(5).getNumericCellValue() == 2) ? row.getCell(10).getNumericCellValue() : 0),
-                        stations, (int) row.getCell(11).getNumericCellValue());
+                        stations,
+                        (row.getCell(5).getNumericCellValue() == 2) ?
+                                (int) row.getCell(12).getNumericCellValue() : (int) row.getCell(11).getNumericCellValue())
+                ;
                 blocks.add(block2);
             }
 

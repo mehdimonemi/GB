@@ -1217,7 +1217,7 @@ public class PrimaryController {
             ) {
                 XSSFSheet inSheet = inWorkbook.getSheetAt(3);
 
-                XSSFSheet outSheet = outWorkbook.createSheet("خلاصه گابار بلاک ها");
+                XSSFSheet outSheet = outWorkbook.createSheet("خلاصه گاباری بلاک ها");
                 outSheet.setRightToLeft(true);
 
                 int counter = 1;
