@@ -37,7 +37,7 @@ public class CopySheet {
 
     public void copyRow(XSSFSheet srcSheet, XSSFSheet destSheet, XSSFRow srcRow, XSSFRow destRow) {
         destRow.setHeight(srcRow.getHeight());
-        for (int j = srcRow.getFirstCellNum(); j <= srcRow.getLastCellNum(); j++) {
+        for (int j = srcRow.getFirstCellNum(); j <= 4; j++) {
             XSSFCell oldCell = srcRow.getCell(j);
             XSSFCell newCell = destRow.getCell(j);
             if (oldCell != null) {
@@ -85,7 +85,7 @@ public class CopySheet {
                 newCell.setCellErrorValue(oldCell.getErrorCellValue());
                 break;
             case FORMULA:
-                newCell.setCellFormula(oldCell.getCellFormula());
+                newCell.setCellValue(oldCell.getStringCellValue());
                 break;
             default:
                 break;

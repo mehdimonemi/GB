@@ -5,7 +5,7 @@
 <?import javafx.scene.layout.*?>
 <?import org.controlsfx.control.CheckComboBox?>
 <VBox stylesheets="@primary.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="ir.rai.PrimaryController">
+      fx:controller="ir.rai.PrimaryController" nodeOrientation="RIGHT_TO_LEFT">
     <SplitPane dividerPositions="0.75">
         <Pane>
             <TabPane fx:id="tabPane" side="LEFT" rotateGraphic="true">
@@ -24,49 +24,49 @@
             <Separator/>
             <Label id="guide" text="ورود اطلاعات"/>
             <GridPane hgap="10" vgap="2">
-                <Label text="Origin" GridPane.columnIndex="0" GridPane.rowIndex="0" id="myLabel"/>
+                <Label text="مبدا" GridPane.columnIndex="0" GridPane.rowIndex="0" id="myLabel"/>
                 <TextField fx:id="origin" GridPane.columnIndex="1" GridPane.rowIndex="0"
                            nodeOrientation="RIGHT_TO_LEFT"/>
-                <Label text="Destination" GridPane.columnIndex="0" GridPane.rowIndex="1" id="myLabel"/>
+                <Label text="مقصد" GridPane.columnIndex="0" GridPane.rowIndex="1" id="myLabel"/>
                 <TextField fx:id="destination" GridPane.columnIndex="1" GridPane.rowIndex="1"
                            nodeOrientation="RIGHT_TO_LEFT"/>
                 <ComboBox fx:id="coordinationBox" GridPane.columnIndex="2" GridPane.halignment="LEFT"
                           GridPane.rowIndex="1"/>
-                <Button fx:id="deleteData" text="Delete All" GridPane.rowIndex="1"
+                <Button fx:id="deleteData" text="حذف همه" GridPane.rowIndex="1"
                         GridPane.columnIndex="3"/>
             </GridPane>
 
             <VBox>
                 <TableView fx:id="inputTable" editable="true"/>
                 <HBox spacing="5">
-                    <Button fx:id="addButton" text="add"/>
-                    <TextField fx:id="add1Para" promptText="X or Width"/>
-                    <TextField fx:id="add2Para" promptText="Y or Height"/>
+                    <Button fx:id="addButton" text="اضافه"/>
+                    <TextField fx:id="add1Para" promptText="X یا عرض"/>
+                    <TextField fx:id="add2Para" promptText="Y یا ارتفاع"/>
                 </HBox>
             </VBox>
 
             <GridPane hgap="5" vgap="5">
-                <Label text="path exceptions" id="myLabel" GridPane.columnIndex="0"
+                <Label text="مسیرهای استثنا" id="myLabel" GridPane.columnIndex="0"
                        GridPane.rowIndex="0"/>
                 <CheckComboBox fx:id="corridors" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
 
-                <Label text="wagon height   " id="myLabel" GridPane.columnIndex="0"
+                <Label text="ارتفاع واگن" id="myLabel" GridPane.columnIndex="0"
                        GridPane.rowIndex="1"/>
                 <ComboBox fx:id="wagonHeight" editable="true" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
 
-                <Label text="Output:" id="myLabel" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                <Label text="پوشه خروجی:" id="myLabel" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
                 <TextField fx:id="outDirectory" minWidth="100"
                            editable="false" promptText="شماره نامه/نام خروجی"
                            GridPane.columnIndex="1" GridPane.rowIndex="2"/>
-                <Button fx:id="loadFile" text="Load" GridPane.columnIndex="2" GridPane.rowIndex="2"/>
+                <Button fx:id="loadFile" text="انتخاب پوشه" GridPane.columnIndex="2" GridPane.rowIndex="2"/>
 
-                <Button fx:id="startBtm" text="Calculate and Save"
+                <Button fx:id="startBtm" text="انجام محاسبه و ذخیره"
                         GridPane.columnIndex="0" GridPane.rowIndex="3"/>
             </GridPane>
 
             <ProgressBar fx:id="progressBar" visible="false"/>
             <Label fx:id="serviceResult"/>
-            <Label text="All numbers in tables and charts are in Millimeter unit." id="sign"/>
+            <Label text="تمامی واحدها در جدول و شکل ها به واحد میلی متر هستند" id="sign"/>
             <Label text="Developed By @ImaH" id="sign"/>
         </VBox>
     </SplitPane>

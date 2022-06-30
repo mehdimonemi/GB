@@ -24,7 +24,7 @@
 }
 
 #pathTable .table-cell {
-    -fx-alignment: CENTER-RIGHT;
+    -fx-alignment: CENTER-Left;
     -fx-padding: 0.05em 0.5em 0.05em 0.5em;
 }
 
@@ -45,6 +45,35 @@
     -fx-padding: 0.05em 0.5em 0.05em 0.5em;
     -fx-font-size: 10;
     -fx-alignment: Center;
+}
+
+#inputTable .column-header .label {
+    -fx-background-color: table-column-color;
+    -fx-padding: 0 0 0 0;
+    -fx-alignment: center;
+    -fx-font-weight: Bold;
+    -fx-font-size: 11;
+}
+
+#inputTable .column-header {
+    -fx-background-color: table-column-color;
+    -fx-padding: 0 0 0 0;
+}
+
+#inputTable .table-cell {
+    -fx-padding: 0.05em 0.5em 0.05em 0.5em;
+    -fx-font-size: 10;
+    -fx-alignment: Center;
+}
+
+#inputTable .column-header .label .text {
+    -fx-font-family: "Gandom";
+
+}
+
+#inputTable .table-cell .text {
+    -fx-font-family: "Gandom";
+
 }
 
 #wrappableLabel .label {
@@ -155,10 +184,12 @@
 
 #myLabel .text {
     -fx-font-size: 11;
+    -fx-font-family: "Gandom";
 }
 
 #sign .text {
     -fx-font-size: 9;
+    -fx-font-family: "Gandom";
 }
 
 .text-field {
@@ -166,7 +197,15 @@
 }
 
 .button .text {
-    -fx-padding: 0.2em 0.5em 0.2em 0.5em;
+    -fx-padding: 0.0em 0.0em 0.0em 0.0em;
+    -fx-font-family: "Gandom";
+}
+
+.button {
+    -fx-padding: 0.0em 0.3em 0.0em 0.3em;
+    -fx-max-height: 27px;
+    -fx-min-height: 27px;
+    -fx-pref-height: 27px;
 }
 
 #guide .text {

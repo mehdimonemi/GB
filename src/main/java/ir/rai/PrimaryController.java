@@ -204,22 +204,27 @@ public class PrimaryController {
     private void configureInputTable() {
         inputTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         inputTable.setEditable(true);
+        inputTable.setId("inputTable");
         inputTable.getSelectionModel().setCellSelectionEnabled(false);
 
         inputTable.setRowFactory(
                 tableView -> {
+                    Font.loadFont("file:resources/Gandom-FD.ttf", 45);
                     TableRow<MyCoordinate> row = new TableRow<>();
                     ContextMenu rowMenu = new ContextMenu();
-                    MenuItem addTop = new MenuItem("Add top");
+                    MenuItem addTop = new MenuItem("اضافه بالا");
+                    addTop.setStyle("-fx-font: 12px 'Gandom'");
                     addTop.setOnAction(event -> data.add(max(0, data.indexOf(row.getItem())),
                             new MyCoordinate(Float.parseFloat(add1Para.getText()),
                                     Float.parseFloat(add2Para.getText()))));
-                    MenuItem addBottom = new MenuItem("Add bottom");
+                    MenuItem addBottom = new MenuItem("اضافه پایین");
+                    addBottom.setStyle("-fx-font: 12px 'Gandom'");
                     addBottom.setOnAction(event -> data.add(data.indexOf(row.getItem()) + 1,
                             new MyCoordinate(Float.parseFloat(add1Para.getText()),
                                     Float.parseFloat(add2Para.getText()))));
 
-                    MenuItem deleteBottom = new MenuItem("Delete");
+                    MenuItem deleteBottom = new MenuItem("حذف");
+                    deleteBottom.setStyle("-fx-font: 12px 'Gandom'");
                     deleteBottom.setOnAction(event -> data.remove(data.get(data.indexOf(row.getItem()))));
                     rowMenu.getItems().addAll(addTop, addBottom, deleteBottom);
 
@@ -231,10 +236,9 @@ public class PrimaryController {
                     return row;
                 });
 
-        Callback<TableColumn<MyCoordinate, Float>, TableCell<MyCoordinate, Float>> cellFactory =
-                p -> new EditingCell();
+        Callback<TableColumn<MyCoordinate, Float>, TableCell<MyCoordinate, Float>> cellFactory = p -> new EditingCell();
 
-        TableColumn<MyCoordinate, Float> column1 = new TableColumn("X or Width");
+        TableColumn<MyCoordinate, Float> column1 = new TableColumn("X یا عرض");
         column1.setSortable(false);
         column1.setCellValueFactory(new PropertyValueFactory<>("x"));
         column1.setCellFactory(cellFactory);
@@ -242,7 +246,7 @@ public class PrimaryController {
                 t -> t.getTableView().getItems().get(
                         t.getTablePosition().getRow()).setX(t.getNewValue()));
 
-        TableColumn<MyCoordinate, Float> column2 = new TableColumn<>("Y or Height");
+        TableColumn<MyCoordinate, Float> column2 = new TableColumn<>("Y یا ارتفاع");
         column2.setSortable(false);
         column2.setCellValueFactory(new PropertyValueFactory<>("y"));
         column2.setCellFactory(cellFactory);
@@ -252,7 +256,7 @@ public class PrimaryController {
 
         inputTable.setItems(data);
 
-        TableColumn mainColumn = new TableColumn("Cargo Size");
+        TableColumn mainColumn = new TableColumn("ابعاد بار");
 
         mainColumn.getColumns().addAll(column1, column2);
 
@@ -270,6 +274,7 @@ public class PrimaryController {
         overallTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         overallTable.setEditable(false);
         overallTable.getSelectionModel().setCellSelectionEnabled(false);
+        overallTable.setNodeOrientation(NodeOrientation.LEFT_TO_RIGHT);
 
         TableColumn<Result, String> column1 = new TableColumn<>("مسیر");
         TableColumn<Result, String> column2 = new TableColumn<>("تیب گاباری");
@@ -1017,6 +1022,9 @@ public class PrimaryController {
 
         private void createTextField() {
             textField = new TextField(getString());
+            Font.loadFont("file:resources/Gandom-FD.ttf", 45);
+            textField.setStyle("-fx-font: 12px 'Gandom'");
+            textField.setAlignment(Pos.CENTER);
             textField.setMinWidth(this.getWidth() - this.getGraphicTextGap() * 2);
             textField.setOnKeyPressed(t -> {
                 if (t.getCode() == KeyCode.ENTER) {
