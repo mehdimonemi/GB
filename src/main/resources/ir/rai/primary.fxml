@@ -25,10 +25,10 @@
             <Label id="guide" text="ورود اطلاعات"/>
             <GridPane hgap="10" vgap="2">
                 <Label text="مبدا" GridPane.columnIndex="0" GridPane.rowIndex="0" id="myLabel"/>
-                <TextField fx:id="origin" GridPane.columnIndex="1" GridPane.rowIndex="0"
+                <ComboBox fx:id="origin" GridPane.columnIndex="1" GridPane.rowIndex="0"
                            nodeOrientation="RIGHT_TO_LEFT"/>
                 <Label text="مقصد" GridPane.columnIndex="0" GridPane.rowIndex="1" id="myLabel"/>
-                <TextField fx:id="destination" GridPane.columnIndex="1" GridPane.rowIndex="1"
+                <ComboBox fx:id="destination" GridPane.columnIndex="1" GridPane.rowIndex="1"
                            nodeOrientation="RIGHT_TO_LEFT"/>
                 <ComboBox fx:id="coordinationBox" GridPane.columnIndex="2" GridPane.halignment="LEFT"
                           GridPane.rowIndex="1"/>

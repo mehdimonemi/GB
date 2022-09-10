@@ -26,6 +26,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.TextAlignment;
@@ -75,7 +76,10 @@ public class PrimaryController {
     Button addButton, startBtm, loadFile, deleteData;
 
     @FXML
-    TextField add1Para, add2Para, origin, destination, outDirectory;
+    TextField add1Para, add2Para, outDirectory;
+
+    @FXML
+    ComboBox<String> origin, destination;
 
     @FXML
     ComboBox<String> coordinationBox, wagonHeight;
@@ -117,13 +121,28 @@ public class PrimaryController {
         configureLoadFile();
         configureInputTable();
         configureCheckBoxes();
+        configureComboBox();
         checkCommodities();
         calculationInitialize();
     }
 
+    private void configureComboBox() {
+        for (Station station: assignment.stations){
+            origin.getItems().add(station.getName());
+        }
+        FxUtilTest.autoCompleteComboBoxPlus(origin, (typedText, station) ->
+                station.contains(typedText.toLowerCase()));
+
+        for (Station station: assignment.stations){
+            destination.getItems().add(station.getName());
+        }
+        FxUtilTest.autoCompleteComboBoxPlus(destination, (typedText, station) ->
+                station.contains(typedText.toLowerCase()));
+    }
+
     private void configureCheckBoxes() {
         coordinationBox.getItems().addAll("XY Coordination", "Width and Height");
-        coordinationBox.setValue("XY Coordination");
+        coordinationBox.setValue("Width and Height");
         coordinationBox.valueProperty().addListener(observable -> coordinationBox.getValue());
 
         for (Corridor corridor : specialCorridors) {
@@ -146,27 +165,49 @@ public class PrimaryController {
             add1Para.setText("");
             add2Para.setText("");
         });
+
+        add1Para.addEventHandler(KeyEvent.KEY_PRESSED, ev -> {
+            if (ev.getCode() == KeyCode.ENTER) {
+                data.add(new MyCoordinate(Float.parseFloat(add1Para.getText()), Float.parseFloat(add2Para.getText())));
+                add1Para.setText("");
+                add2Para.setText("");
+                add1Para.requestFocus();
+                ev.consume();
+            }
+        });
+
+        add2Para.addEventHandler(KeyEvent.KEY_PRESSED, ev -> {
+            if (ev.getCode() == KeyCode.ENTER) {
+                data.add(new MyCoordinate(Float.parseFloat(add1Para.getText()), Float.parseFloat(add2Para.getText())));
+                add1Para.setText("");
+                add2Para.setText("");
+                add1Para.requestFocus();
+                ev.consume();
+            }
+        });
+
     }
 
     private void configureLoadFile() {
         loadFile.setOnAction(event -> {
             DirectoryChooser directoryChooser = new DirectoryChooser();
-            directoryChooser.setInitialDirectory(new File("./output"));
+            directoryChooser.setInitialDirectory(new File("./خروجی ها"));
             File selectedDirectory = directoryChooser.showDialog(loadFile.getParent().getScene().getWindow());
             if (selectedDirectory != null) {
-                outDirectory.setText(selectedDirectory.getName());
-                outputFileLocation = selectedDirectory.getPath() + "/output.xlsx";
-                outputDXFLocation = selectedDirectory.getPath() + "/";
+                File directory = new File(selectedDirectory.getPath());
+                outDirectory.setText(directory.getName());
+                outputFileLocation = directory.getPath() + "/output.xlsx";
+                outputDXFLocation = directory.getPath() + "/";
                 try {
                     if (isFileClose(outputFileLocation)) {
-                        serviceResult.setStyle("-fx-text-fill: Black");
+                        serviceResult.setStyle("-fx-text-fill: Black;-fx-font: 12px 'Gandom';");
                         serviceResult.setText("");
                     } else {
                         throw new Exception();
                     }
                 } catch (Exception e) {
-                    serviceResult.setStyle("-fx-text-fill: red");
-                    serviceResult.setText("Output excel file is open. Please Close it First and retry");
+                    serviceResult.setStyle("-fx-text-fill: red;-fx-font: 12px 'Gandom';");
+                    serviceResult.setText("اکسل خروجی باز است. لطفا نخست فایل را ببندید.");
                 }
 
                 try (
@@ -176,8 +217,8 @@ public class PrimaryController {
 
                     XSSFSheet sheet = workbook.getSheet("ورودی واگن یا بار");
                     data = FXCollections.observableArrayList();
-                    origin.setText(sheet.getRow(0).getCell(1).getStringCellValue());
-                    destination.setText(sheet.getRow(1).getCell(1).getStringCellValue());
+                    origin.setValue(sheet.getRow(0).getCell(1).getStringCellValue());
+                    destination.setValue(sheet.getRow(1).getCell(1).getStringCellValue());
 
                     for (int i = 5; i <= sheet.getLastRowNum(); i++) {
                         data.add(new MyCoordinate(
@@ -194,8 +235,8 @@ public class PrimaryController {
                         wagonHeight.setValue(String.valueOf((int) cell.getNumericCellValue()));
                     }
                 } catch (IOException e) {
-                    serviceResult.setStyle("-fx-text-fill: red");
-                    serviceResult.setText("There is no Output File, or the file has a problem");
+                    serviceResult.setStyle("-fx-text-fill: red;-fx-font: 12px 'Gandom';");
+                    serviceResult.setText("فایل خروجی وجود ندارد یا فایل مشکل دارد");
                 }
             }
         });
@@ -474,6 +515,27 @@ public class PrimaryController {
                 return new Task() {
                     @Override
                     protected Object call() {
+
+                        if (outDirectory.getText().equals("") || outDirectory.getText().endsWith("./خروجی ها")){
+                            String output = "./خروجی ها/" + origin.getValue() + " - " + destination.getValue();
+                            File directory = null;
+                            boolean directoryDone = false;
+                            int counter = 1;
+                            while (!directoryDone) {
+                                String temp = output + " " + counter;
+                                directory = new File(temp);
+                                if (!directory.exists()) {
+                                    directory.mkdir();
+                                    outDirectory.setText(directory.getName());
+                                    directoryDone = true;
+                                } else {
+                                    counter++;
+                                }
+                            }
+                            outputFileLocation = directory.getPath() + "/output.xlsx";
+                            outputDXFLocation = directory.getPath() + "/";
+                        }
+
                         realData = new ArrayList<>();
                         tabList = new ArrayList<>();
                         resultData = FXCollections.observableArrayList();
@@ -489,8 +551,8 @@ public class PrimaryController {
                         }
 
                         LinkedHashMap<String, Integer> gabariResult =
-                                new LinkedHashMap<>(assignment.main(origin.getText(),
-                                        destination.getText(), corridors.getCheckModel().getCheckedItems()));
+                                new LinkedHashMap<>(assignment.main(origin.getValue(),
+                                        destination.getValue(), corridors.getCheckModel().getCheckedItems()));
 
                         deleteIfFileExist(outputFileLocation);
                         prepareExcel(outputFileLocation);
@@ -561,6 +623,7 @@ public class PrimaryController {
                             rowCounter++;
                             drawGabari(pair.getKey().toString(), transportable,
                                     ((Integer) pair.getValue() - 1), outOfAllow, outOfFree, tab);
+
                             createDXF(transportable, ((Integer) pair.getValue() - 1), pair.getKey().toString());
                             tabList.add(tab);
                         }
@@ -577,8 +640,8 @@ public class PrimaryController {
         });
         calculationService.setOnFailed(e -> {
             progressBar.setVisible(false);
-            serviceResult.setStyle("-fx-text-fill: red");
-            serviceResult.setText("Unsuccessful Gabari Calculation");
+            serviceResult.setStyle("-fx-text-fill: red;-fx-font: 12px 'Gandom';");
+            serviceResult.setText("محاسبه گاباری با مشکل مواجه شد");
         });
         calculationService.setOnSucceeded(e -> {
             while (tabPane.getTabs().size() > 0) {
@@ -588,8 +651,8 @@ public class PrimaryController {
                 tabPane.getTabs().add(tab);
             }
             progressBar.setVisible(false);
-            serviceResult.setStyle("-fx-text-fill: Green");
-            serviceResult.setText("Done. See Results");
+            serviceResult.setStyle("-fx-text-fill: Green;-fx-font: 12px 'Gandom';");
+            serviceResult.setText("انجام شد. نتایج را مشاهده نمایید");
         });
     }
 
@@ -607,10 +670,18 @@ public class PrimaryController {
             directoryChooser.setInitialDirectory(new File(outputDXFLocation));
             File selectedDirectory = directoryChooser.showDialog(loadFile.getParent().getScene().getWindow());
             BufferedImage img2 = SwingFXUtils.fromFXImage(img, null);
+            //Mirror the image because we are in right to left orientation
+            BufferedImage img3 = new BufferedImage(img2.getWidth(), img2.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < img2.getHeight(); y++) {
+                for (int lx = 0, rx = img2.getWidth() - 1; lx < img2.getWidth(); lx++, rx--) {
+                    int p = img2.getRGB(rx, y);
+                    img3.setRGB(lx, y, p);
+                }
+            }
             if (selectedDirectory != null) {
                 try {
                     File f = new File(selectedDirectory + "/" + sectionName + ".png");
-                    ImageIO.write(img2, "png", f);
+                    ImageIO.write(img3, "png", f);
                 } catch (IOException ioException) {
                     ioException.printStackTrace();
                 }
@@ -652,11 +723,11 @@ public class PrimaryController {
             CellStyle style = setStyle(workbook, "B Zar", new Color(210, 202, 159));
             XSSFRow row1 = sheet1.createRow(0);
             setCell(row1.createCell(0), "مبدا", style);
-            setCell(row1.createCell(1), origin.getText(), style);
+            setCell(row1.createCell(1), origin.getValue(), style);
 
             row1 = sheet1.createRow(1);
             setCell(row1.createCell(0), "مقصد", style);
-            setCell(row1.createCell(1), destination.getText(), style);
+            setCell(row1.createCell(1), destination.getValue(), style);
 
             row1 = sheet1.createRow(2);
             setCell(row1.createCell(0), "نوع", style);
@@ -722,7 +793,6 @@ public class PrimaryController {
         GridPane header = new GridPane();
         header.setHgap(20);
         header.setVgap(5);
-        header.setNodeOrientation(NodeOrientation.RIGHT_TO_LEFT);
         header.setPadding(new Insets(0, 0, 10, 10));
         header.setAlignment(Pos.CENTER);
         Font.loadFont("file:resources/Gandom-FD.ttf", 45);
@@ -829,6 +899,7 @@ public class PrimaryController {
         } else {
             parent.getChildren().addAll(header);
         }
+        parent.setNodeOrientation(NodeOrientation.RIGHT_TO_LEFT);
         createJPG(parent, sectionName);
         tab.setContent(parent);
     }
@@ -1048,11 +1119,11 @@ public class PrimaryController {
                     @Override
                     protected Void call() throws Exception {
                         //blow is our commoditiesCheck result:
-                        commodityCheckResult[0][0] = origin.getText();//correct origin name that we get it from correct name dialog
-                        commodityCheckResult[0][1] = destination.getText();//correct destination name that we get it from correct name dialog
+                        commodityCheckResult[0][0] = origin.getValue();//correct origin name that we get it from correct name dialog
+                        commodityCheckResult[0][1] = destination.getValue();//correct destination name that we get it from correct name dialog
                         if (namesCheck) {
-                            commodityCheckResult[0][2] = origin.getText();//original origin name that might be incorrect
-                            commodityCheckResult[0][3] = destination.getText();//original destination name that might be incorrect
+                            commodityCheckResult[0][2] = origin.getValue();//original origin name that might be incorrect
+                            commodityCheckResult[0][3] = destination.getValue();//original destination name that might be incorrect
                         }
 
                         if (isFileClose("./Data.xlsx")) {
@@ -1069,7 +1140,7 @@ public class PrimaryController {
             }
         };
         commoditiesCheck.setOnFailed(event -> {
-            serviceResult.setStyle("-fx-text-fill: red");
+            serviceResult.setStyle("-fx-text-fill: red;-fx-font: 12px 'Gandom';");
             serviceResult.setText(e.getMessage());
         });
 
@@ -1211,8 +1282,8 @@ public class PrimaryController {
 
     public void showAllGabari() {
         if (!isFileClose("./temp.xlsx")) {
-            serviceResult.setStyle("-fx-text-fill: red");
-            serviceResult.setText("Temp excel file is open. Please Close it First and retry");
+            serviceResult.setStyle("-fx-text-fill: red;-fx-font: 12px 'Gandom';");
+            serviceResult.setText("فایل اکسل Temp باز است. لطفا آن را ببندید.");
         } else {
             deleteIfFileExist("./temp.xlsx");
 
